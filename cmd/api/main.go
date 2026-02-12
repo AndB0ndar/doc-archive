@@ -11,7 +11,9 @@ import (
 	"time"
 
 	"github.com/AndB0ndar/doc-archive/internal/config"
+	"github.com/AndB0ndar/doc-archive/internal/db"
 	"github.com/AndB0ndar/doc-archive/internal/logger"
+	"github.com/AndB0ndar/doc-archive/internal/repository"
 	"github.com/AndB0ndar/doc-archive/internal/router"
 )
 
@@ -25,11 +27,24 @@ func main() {
 	logger.Setup(cfg.Env)
 	slog.Info("config loaded", "port", cfg.Port, "env", cfg.Env)
 
-	r := router.New()
+	pool, err := db.NewPool(cfg.Database)
+	if err != nil {
+		slog.Error("failed to connect to database", "error", err)
+		os.Exit(1)
+	}
+	defer pool.Close()
+
+	if err := db.RunMigrations(pool, cfg.Database); err != nil {
+		slog.Error("failed to run migrations", "error", err)
+		os.Exit(1)
+	}
+
+	docRepo := repository.NewDocumentRepository(pool)
+	handler := router.NewRouter(cfg, docRepo)
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.Port),
-		Handler:      r,
+		Handler:      handler,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  60 * time.Second,
@@ -56,4 +71,5 @@ func main() {
 		os.Exit(1)
 	}
 	slog.Info("server stopped gracefully")
+	os.Exit(0)
 }

@@ -3,17 +3,27 @@ package config
 import (
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/joho/godotenv"
 )
 
 type Config struct {
 	Port        int
-	BaseURL     string
+	Env         string
 	UploadDir   string
 	EmbedderURL string
-	DatabaseURL string
-	Env         string
+	Database    DatabaseConfig
+}
+
+type DatabaseConfig struct {
+	URL               string
+	MigrationsPath    string
+	MaxOpenConns      int
+	MaxIdleConns      int
+	MaxConnLifetime   time.Duration
+	MaxConnIdleTime   time.Duration
+	HealthCheckPeriod time.Duration
 }
 
 func Load() (*Config, error) {
@@ -26,11 +36,18 @@ func Load() (*Config, error) {
 
 	return &Config{
 		Port:        port,
-		BaseURL:     getEnv("BASE_URL", "http://localhost:8080"),
 		UploadDir:   getEnv("UPLOAD_DIR", "uploads"),
 		EmbedderURL: getEnv("EMBEDDER_URL", "http://localhost:5001"),
-		DatabaseURL: getEnv("DATABASE_URL", "postgres://user:pass@localhost:5432/docdb?sslmode=disable"),
 		Env:         getEnv("ENV", "development"),
+		Database: DatabaseConfig{
+			URL:               getEnv("DATABASE_URL", "postgres://user:pass@localhost:5432/docdb?sslmode=disable"),
+			MigrationsPath:    getEnv("MIGRATIONS_PATH", "migrations"),
+			MaxOpenConns:      20,
+			MaxIdleConns:      10,
+			MaxConnLifetime:   30 * time.Minute,
+			MaxConnIdleTime:   5 * time.Minute,
+			HealthCheckPeriod: 1 * time.Minute,
+		},
 	}, nil
 }
 

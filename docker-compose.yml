@@ -1,7 +1,6 @@
-version: '3.8'
 services:
   postgres:
-    image: postgres
+    image: pgvector/pgvector:pg15
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: pass
@@ -9,15 +8,16 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
-    command: postgres -c shared_preload_libraries=vector  # important!
+      - pgdata:/var/lib/postgresql
+    command: postgres -c shared_preload_libraries=vector
 
-  embedder:
-    build: ./embedder
-    ports:
-      - "5001:5001"
-    environment:
-      - MODEL_NAME=all-MiniLM-L6-v2
+  #embedder:
+    #build: ./embedder
+    #ports:
+      #- "5001:5001"
+    #environment:
+      #- MODEL_NAME=all-MiniLM-L6-v2
 
 volumes:
   pgdata:
+
