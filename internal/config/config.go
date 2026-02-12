@@ -14,6 +14,7 @@ type Config struct {
 	UploadDir   string
 	EmbedderURL string
 	Database    DatabaseConfig
+	MaxTextLen	int
 }
 
 type DatabaseConfig struct {
@@ -39,6 +40,7 @@ func Load() (*Config, error) {
 		UploadDir:   getEnv("UPLOAD_DIR", "uploads"),
 		EmbedderURL: getEnv("EMBEDDER_URL", "http://localhost:5001"),
 		Env:         getEnv("ENV", "development"),
+		MaxTextLen:	 5000,
 		Database: DatabaseConfig{
 			URL:               getEnv("DATABASE_URL", "postgres://user:pass@localhost:5432/docdb?sslmode=disable"),
 			MigrationsPath:    getEnv("MIGRATIONS_PATH", "migrations"),

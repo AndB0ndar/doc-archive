@@ -11,12 +11,17 @@ services:
       - pgdata:/var/lib/postgresql
     command: postgres -c shared_preload_libraries=vector
 
-  #embedder:
-    #build: ./embedder
-    #ports:
-      #- "5001:5001"
-    #environment:
-      #- MODEL_NAME=all-MiniLM-L6-v2
+  embedder:
+    build: ./embedder
+    ports:
+      - "5001:5001"
+    environment:
+      - MODEL_NAME=all-MiniLM-L6-v2
+      - MAX_TEXT_LENGTH=5000
+    deploy:
+      resources:
+        limits:
+          memory: 1G
 
 volumes:
   pgdata:

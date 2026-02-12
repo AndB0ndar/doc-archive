@@ -15,5 +15,12 @@ CREATE TABLE documents (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_documents_title_trgm ON documents USING gin (title gin_trgm_ops);
-CREATE INDEX idx_documents_full_text_trgm ON documents USING gin (full_text gin_trgm_ops);
+CREATE INDEX idx_documents_title_trgm ON documents
+    USING gin (title gin_trgm_ops);
+CREATE INDEX idx_documents_full_text_trgm ON documents
+    USING gin (full_text gin_trgm_ops);
+
+-- Index for cosine search
+CREATE INDEX idx_documents_embedding ON documents
+    USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+

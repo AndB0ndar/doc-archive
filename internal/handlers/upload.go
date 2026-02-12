@@ -17,11 +17,13 @@ import (
 	"github.com/AndB0ndar/doc-archive/internal/models"
 	"github.com/AndB0ndar/doc-archive/internal/pdfextractor"
 	"github.com/AndB0ndar/doc-archive/internal/repository"
+	"github.com/AndB0ndar/doc-archive/internal/vectorizer"
 )
 
 type UploadHandler struct {
 	cfg       *config.Config
 	repo      *repository.DocumentRepository
+	embedderClient *vectorizer.Client
 	uploadDir string
 }
 
@@ -29,6 +31,7 @@ func NewUploadHandler(cfg *config.Config, repo *repository.DocumentRepository) *
 	return &UploadHandler{
 		cfg:       cfg,
 		repo:      repo,
+		embedderClient: vectorizer.NewClient(cfg.EmbedderURL),
 		uploadDir: cfg.UploadDir,
 	}
 }
@@ -184,5 +187,22 @@ func (h *UploadHandler) processDocument(docID int, filePath string) {
 
 	slog.Info("document text extracted and saved", "id", docID, "text_length", len(text))
 
-	// TODO: call Python-embedder and save vector
+	maxTextLen := h.cfg.MaxTextLen
+    truncated := text
+    if len(truncated) > maxTextLen {
+        truncated = truncated[:maxTextLen]
+    }
+
+    embedding, err := h.embedderClient.Embed(truncated)
+    if err != nil {
+        slog.Error("failed to get embedding", "id", docID, "error", err)
+        return
+    }
+
+    if err := h.repo.UpdateEmbedding(docID, embedding); err != nil {
+        slog.Error("failed to save embedding", "id", docID, "error", err)
+        return
+    }
+
+    slog.Info("document embedding saved", "id", docID)
 }

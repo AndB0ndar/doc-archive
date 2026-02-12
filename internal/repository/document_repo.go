@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+    "github.com/pgvector/pgvector-go"
 
 	"github.com/AndB0ndar/doc-archive/internal/models"
 )
@@ -53,4 +54,17 @@ func (r *DocumentRepository) UpdateFullText(id int, text string) error {
 		return fmt.Errorf("document with id %d not found", id)
 	}
 	return nil
+}
+
+func (r *DocumentRepository) UpdateEmbedding(id int, embedding []float32) error {
+    query := `UPDATE documents SET embedding = $1, updated_at = NOW() WHERE id = $2`
+    vec := pgvector.NewVector(embedding)
+    cmdTag, err := r.db.Exec(r.ctx, query, vec, id)
+    if err != nil {
+        return fmt.Errorf("update embedding: %w", err)
+    }
+    if cmdTag.RowsAffected() == 0 {
+        return fmt.Errorf("document with id %d not found", id)
+    }
+    return nil
 }
