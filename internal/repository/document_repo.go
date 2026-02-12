@@ -11,14 +11,18 @@ import (
 )
 
 type DocumentRepository struct {
-	db *pgxpool.Pool
+	ctx context.Context
+	db  *pgxpool.Pool
 }
 
 func NewDocumentRepository(db *pgxpool.Pool) *DocumentRepository {
-	return &DocumentRepository{db: db}
+	return &DocumentRepository{
+		ctx: context.Background(),
+		db:  db,
+	}
 }
 
-func (r *DocumentRepository) Create(ctx context.Context, doc *models.Document) (int, error) {
+func (r *DocumentRepository) Create(doc *models.Document) (int, error) {
 	query := `
 		INSERT INTO documents (title, authors, year, category, file_path, file_size)
 		VALUES ($1, $2, $3, $4, $5, $6)
@@ -26,7 +30,7 @@ func (r *DocumentRepository) Create(ctx context.Context, doc *models.Document) (
 	`
 	var id int
 	var createdAt, updatedAt time.Time
-	err := r.db.QueryRow(ctx, query,
+	err := r.db.QueryRow(r.ctx, query,
 		doc.Title, doc.Authors, doc.Year, doc.Category, doc.FilePath, doc.FileSize,
 	).Scan(&id, &createdAt, &updatedAt)
 	if err != nil {
@@ -37,4 +41,16 @@ func (r *DocumentRepository) Create(ctx context.Context, doc *models.Document) (
 	doc.CreatedAt = createdAt
 	doc.UpdatedAt = updatedAt
 	return id, nil
+}
+
+func (r *DocumentRepository) UpdateFullText(id int, text string) error {
+	query := `UPDATE documents SET full_text = $1, updated_at = NOW() WHERE id = $2`
+	cmdTag, err := r.db.Exec(r.ctx, query, text, id)
+	if err != nil {
+		return fmt.Errorf("update full_text: %w", err)
+	}
+	if cmdTag.RowsAffected() == 0 {
+		return fmt.Errorf("document with id %d not found", id)
+	}
+	return nil
 }

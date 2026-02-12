@@ -15,6 +15,7 @@ import (
 
 	"github.com/AndB0ndar/doc-archive/internal/config"
 	"github.com/AndB0ndar/doc-archive/internal/models"
+	"github.com/AndB0ndar/doc-archive/internal/pdfextractor"
 	"github.com/AndB0ndar/doc-archive/internal/repository"
 )
 
@@ -140,11 +141,15 @@ func (h *UploadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		FileSize: written,
 	}
 
-	id, err := h.repo.Create(r.Context(), doc)
+	id, err := h.repo.Create(doc)
 	if err != nil {
 		slog.Error("failed to save document metadata", "error", err)
 		os.Remove(fullPath) // remove file, if not save in DB
-		http.Error(w, "Failed to save document metadata", http.StatusInternalServerError)
+		http.Error(
+			w,
+			"Failed to save document metadata",
+			http.StatusInternalServerError,
+		)
 		return
 	}
 
@@ -157,4 +162,27 @@ func (h *UploadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	})
 
 	slog.Info("document uploaded", "id", id, "title", title, "size", written)
+
+	// Background processing (does not block the response)
+	go h.processDocument(id, fullPath)
+}
+
+func (h *UploadHandler) processDocument(docID int, filePath string) {
+	slog.Info("starting document processing", "id", docID, "path", filePath)
+
+	text, err := pdfextractor.ExtractText(filePath)
+	if err != nil {
+		slog.Error("failed to extract text from PDF", "id", docID, "error", err)
+		// TODO: can write error in database, in status field
+		return
+	}
+
+	if err := h.repo.UpdateFullText(docID, text); err != nil {
+		slog.Error("failed to update full_text", "id", docID, "error", err)
+		return
+	}
+
+	slog.Info("document text extracted and saved", "id", docID, "text_length", len(text))
+
+	// TODO: call Python-embedder and save vector
 }
