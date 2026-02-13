@@ -12,10 +12,7 @@ type Document struct {
 	Category  *string   `json:"category,omitempty"`
 	FilePath  string    `json:"file_path"`
 	FileSize  int64     `json:"file_size"`
-	FullText  *string   `json:"full_text,omitempty"`
-	Embedding []float32 `json:"-"` // not view in JSON
 	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
 }
 
 func (Document) TableName() string {

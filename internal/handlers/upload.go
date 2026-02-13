@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/AndB0ndar/doc-archive/internal/chunker"
 	"github.com/AndB0ndar/doc-archive/internal/config"
 	"github.com/AndB0ndar/doc-archive/internal/models"
 	"github.com/AndB0ndar/doc-archive/internal/pdfextractor"
@@ -21,28 +22,30 @@ import (
 )
 
 type UploadHandler struct {
-	cfg       *config.Config
-	repo      *repository.DocumentRepository
+	cfg            *config.Config
+	docRepo        *repository.DocumentRepository
+	chunkRepo      *repository.ChunkRepository
 	embedderClient *vectorizer.Client
-	uploadDir string
+	uploadDir      string
 }
 
-func NewUploadHandler(cfg *config.Config, repo *repository.DocumentRepository) *UploadHandler {
+func NewUploadHandler(
+	cfg *config.Config,
+	docRepo *repository.DocumentRepository,
+	chunkRepo *repository.ChunkRepository,
+	embedderClient *vectorizer.Client,
+) *UploadHandler {
 	return &UploadHandler{
-		cfg:       cfg,
-		repo:      repo,
-		embedderClient: vectorizer.NewClient(cfg.EmbedderURL),
-		uploadDir: cfg.UploadDir,
+		cfg:            cfg,
+		docRepo:        docRepo,
+		chunkRepo:      chunkRepo,
+		embedderClient: embedderClient,
+		uploadDir:      cfg.UploadDir,
 	}
 }
 
 // ServeHTTP process POST /upload
 func (h *UploadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
 	// Request size limit (50 MB)
 	r.Body = http.MaxBytesReader(w, r.Body, 50<<20)
 
@@ -134,7 +137,6 @@ func (h *UploadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create metadata in DB
 	doc := &models.Document{
 		Title:    title,
 		Authors:  authors,
@@ -144,7 +146,7 @@ func (h *UploadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		FileSize: written,
 	}
 
-	id, err := h.repo.Create(doc)
+	id, err := h.docRepo.Create(doc)
 	if err != nil {
 		slog.Error("failed to save document metadata", "error", err)
 		os.Remove(fullPath) // remove file, if not save in DB
@@ -180,29 +182,26 @@ func (h *UploadHandler) processDocument(docID int, filePath string) {
 		return
 	}
 
-	if err := h.repo.UpdateFullText(docID, text); err != nil {
-		slog.Error("failed to update full_text", "id", docID, "error", err)
-		return
+	chunkSize := h.cfg.ChunkSize
+	overlap := h.cfg.ChunkOverlap
+	chunks := chunker.Chunk(text, chunkSize, overlap)
+	slog.Info("text chunked", "id", docID, "chunks", len(chunks))
+
+	for idx, chunkText := range chunks {
+		embedding, err := h.embedderClient.Embed(chunkText)
+		if err != nil {
+			slog.Error("failed to get embedding for chunk", "doc_id", docID, "chunk_idx", idx, "error", err)
+			continue
+		}
+		chunk := &models.Chunk{
+			DocumentID: docID,
+			ChunkIndex: idx,
+			Content:    chunkText,
+			Embedding:  embedding,
+		}
+		if _, err := h.chunkRepo.Create(chunk); err != nil {
+			slog.Error("failed to save chunk", "doc_id", docID, "chunk_idx", idx, "error", err)
+		}
 	}
-
-	slog.Info("document text extracted and saved", "id", docID, "text_length", len(text))
-
-	maxTextLen := h.cfg.MaxTextLen
-    truncated := text
-    if len(truncated) > maxTextLen {
-        truncated = truncated[:maxTextLen]
-    }
-
-    embedding, err := h.embedderClient.Embed(truncated)
-    if err != nil {
-        slog.Error("failed to get embedding", "id", docID, "error", err)
-        return
-    }
-
-    if err := h.repo.UpdateEmbedding(docID, embedding); err != nil {
-        slog.Error("failed to save embedding", "id", docID, "error", err)
-        return
-    }
-
-    slog.Info("document embedding saved", "id", docID)
+	slog.Info("document chunks processed", "id", docID)
 }

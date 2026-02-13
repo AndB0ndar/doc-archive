@@ -1,4 +1,4 @@
 DROP TABLE IF EXISTS documents;
+
 DROP EXTENSION IF EXISTS vector;
 DROP EXTENSION IF EXISTS pg_trgm;
-DROP INDEX IF EXISTS idx_documents_embedding;

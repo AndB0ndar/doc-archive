@@ -15,6 +15,7 @@ import (
 	"github.com/AndB0ndar/doc-archive/internal/logger"
 	"github.com/AndB0ndar/doc-archive/internal/repository"
 	"github.com/AndB0ndar/doc-archive/internal/router"
+	"github.com/AndB0ndar/doc-archive/internal/vectorizer"
 )
 
 func main() {
@@ -39,8 +40,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	embedderClient := vectorizer.NewClient(cfg.EmbedderURL)
 	docRepo := repository.NewDocumentRepository(pool)
-	handler := router.NewRouter(cfg, docRepo)
+	chunkRepo := repository.NewChunkRepository(pool)
+	handler := router.NewRouter(cfg, docRepo, chunkRepo, embedderClient)
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.Port),
