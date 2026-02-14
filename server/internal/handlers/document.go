@@ -21,6 +21,18 @@ func NewDocumentHandler(repo *repository.DocumentRepository) *DocumentHandler {
 	return &DocumentHandler{repo: repo}
 }
 
+// GetDocument возвращает информацию о конкретном документе.
+// @Summary      Получить документ
+// @Description  Возвращает метаданные документа по ID.
+// @Tags         documents
+// @Produce      json
+// @Param        id path int true "ID документа"
+// @Success      200  {object}  models.Document
+// @Failure      400  {string}  string "Invalid document ID"
+// @Failure      401  {string}  string "Unauthorized"
+// @Failure      404  {string}  string "Document not found"
+// @Security     BearerAuth
+// @Router       /documents/{id} [get]
 func (h *DocumentHandler) GetDocument(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value(middleware.UserIDKey).(int)
 	if !ok {
@@ -45,6 +57,18 @@ func (h *DocumentHandler) GetDocument(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(doc)
 }
 
+// ListDocuments возвращает список всех документов (с пагинацией).
+// @Summary      Список документов
+// @Description  Возвращает метаданные всех загруженных документов.
+// @Tags         documents
+// @Produce      json
+// @Param        limit query int false "Максимальное количество документов на странице (по умолчанию 20, макс 100)"
+// @Param        offset query int false "Смещение от начала списка (по умолчанию 0)"
+// @Success      200  {array}   models.Document
+// @Failure      401  {string}  string "Unauthorized"
+// @Failure      500  {string}  string "Failed to fetch documents"
+// @Security     BearerAuth
+// @Router       /documents [get]
 func (h *DocumentHandler) ListDocuments(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value(middleware.UserIDKey).(int)
 	if !ok {
@@ -77,6 +101,18 @@ func (h *DocumentHandler) ListDocuments(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
+// DeleteDocument удаляет документ и связанные файлы.
+// @Summary      Удалить документ
+// @Description  Удаляет документ по ID и его PDF-файл.
+// @Tags         documents
+// @Param        id path int true "ID документа"
+// @Success      204  "No Content"
+// @Failure      400  {string}  string "Invalid document ID"
+// @Failure      401  {string}  string "Unauthorized"
+// @Failure      404  {string}  string "Document not found"
+// @Failure      500  {string}  string "Failed to delete file or database record"
+// @Security     BearerAuth
+// @Router       /documents/{id} [delete]
 func (h *DocumentHandler) DeleteDocument(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value(middleware.UserIDKey).(int)
 	if !ok {

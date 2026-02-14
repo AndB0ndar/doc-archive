@@ -24,8 +24,9 @@ func ExtractText(filePath string) (string, error) {
 		if err != nil {
 			continue
 		}
-		cleanText := strings.ToValidUTF8(text, "")
-		builder.WriteString(cleanText)
+		//cleanText := strings.ToValidUTF8(text, " ")
+		//builder.WriteString(cleanText)
+		builder.WriteString(text)
 		builder.WriteString("\n")
 	}
 

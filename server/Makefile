@@ -12,3 +12,5 @@ migrate-up:
 migrate-down:
 	migrate -path migrations -database $(DATABASE_URL) down
 
+swagger:
+	swag init -g cmd/server/main.go

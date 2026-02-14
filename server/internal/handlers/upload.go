@@ -22,6 +22,22 @@ func NewUploadHandler(service *service.DocumentService) *UploadHandler {
 	}
 }
 
+// Upload загружает PDF-файл и запускает обработку.
+// @Summary      Загрузка PDF
+// @Description  Загружает PDF, сохраняет метаданные и запускает фоновую обработку.
+// @Tags         documents
+// @Accept       multipart/form-data
+// @Produce      json
+// @Param        file formData file true "PDF-файл"
+// @Param        title formData string true "Название документа"
+// @Param        authors formData string false "Авторы"
+// @Param        year formData int false "Год публикации"
+// @Param        category formData string false "Категория"
+// @Success      201  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]string
+// @Failure      401  {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /upload [post]
 func (h *UploadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value(middleware.UserIDKey).(int)
 	if !ok {

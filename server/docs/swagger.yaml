@@ -1,0 +1,344 @@
+definitions:
+  models.AuthResponse:
+    properties:
+      token:
+        type: string
+      user:
+        $ref: '#/definitions/models.User'
+    type: object
+  models.ChunkSearchResponse:
+    properties:
+      authors:
+        type: string
+      category:
+        type: string
+      chunk_id:
+        type: integer
+      chunk_index:
+        type: integer
+      content:
+        type: string
+      created_at:
+        type: string
+      document_id:
+        type: integer
+      similarity:
+        description: from 0 to 1
+        type: number
+      title:
+        type: string
+      year:
+        type: integer
+    type: object
+  models.Document:
+    properties:
+      authors:
+        type: string
+      category:
+        type: string
+      created_at:
+        type: string
+      file_path:
+        type: string
+      file_size:
+        type: integer
+      id:
+        type: integer
+      title:
+        type: string
+      user_id:
+        type: integer
+      year:
+        type: integer
+    type: object
+  models.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  models.RegisterRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  models.User:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: integer
+    type: object
+info:
+  contact: {}
+paths:
+  /documents:
+    get:
+      description: Возвращает метаданные всех загруженных документов.
+      parameters:
+      - description: Максимальное количество документов на странице (по умолчанию
+          20, макс 100)
+        in: query
+        name: limit
+        type: integer
+      - description: Смещение от начала списка (по умолчанию 0)
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Document'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "500":
+          description: Failed to fetch documents
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Список документов
+      tags:
+      - documents
+  /documents/{id}:
+    delete:
+      description: Удаляет документ по ID и его PDF-файл.
+      parameters:
+      - description: ID документа
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Invalid document ID
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "404":
+          description: Document not found
+          schema:
+            type: string
+        "500":
+          description: Failed to delete file or database record
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Удалить документ
+      tags:
+      - documents
+    get:
+      description: Возвращает метаданные документа по ID.
+      parameters:
+      - description: ID документа
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Document'
+        "400":
+          description: Invalid document ID
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "404":
+          description: Document not found
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Получить документ
+      tags:
+      - documents
+  /login:
+    post:
+      consumes:
+      - application/json
+      description: Аутентификация пользователя, получение JWT.
+      parameters:
+      - description: Учётные данные
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.AuthResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Вход в систему
+      tags:
+      - auth
+  /register:
+    post:
+      consumes:
+      - application/json
+      description: Создаёт нового пользователя с email и паролем.
+      parameters:
+      - description: Данные для регистрации
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.AuthResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Регистрация пользователя
+      tags:
+      - auth
+  /search:
+    get:
+      description: Полнотекстовый или семантический поиск по содержимому.
+      parameters:
+      - description: Поисковый запрос
+        in: query
+        name: q
+        required: true
+        type: string
+      - description: 'Тип поиска: text (по умолчанию) или vector'
+        in: query
+        name: type
+        type: string
+      - description: Максимальное количество результатов (макс 100)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.ChunkSearchResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Поиск документов
+      tags:
+      - search
+  /upload:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Загружает PDF, сохраняет метаданные и запускает фоновую обработку.
+      parameters:
+      - description: PDF-файл
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: Название документа
+        in: formData
+        name: title
+        required: true
+        type: string
+      - description: Авторы
+        in: formData
+        name: authors
+        type: string
+      - description: Год публикации
+        in: formData
+        name: year
+        type: integer
+      - description: Категория
+        in: formData
+        name: category
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Загрузка PDF
+      tags:
+      - documents
+swagger: "2.0"

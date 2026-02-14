@@ -21,6 +21,19 @@ func NewSearchHandler(searchService *service.SearchService) *SearchHandler {
 	}
 }
 
+// Search выполняет поиск документов/чанков.
+// @Summary      Поиск документов
+// @Description  Полнотекстовый или семантический поиск по содержимому.
+// @Tags         search
+// @Produce      json
+// @Param        q query string true "Поисковый запрос"
+// @Param        type query string false "Тип поиска: text (по умолчанию) или vector"
+// @Param        limit query int false "Максимальное количество результатов (макс 100)"
+// @Success      200  {array}   models.ChunkSearchResponse
+// @Failure      400  {object}  map[string]string
+// @Failure      401  {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /search [get]
 func (h *SearchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value(middleware.UserIDKey).(int)
 	if !ok {

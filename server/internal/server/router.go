@@ -8,12 +8,33 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
+	_ "github.com/AndB0ndar/doc-archive/docs"
+	httpSwagger "github.com/swaggo/http-swagger"
+
 	"github.com/AndB0ndar/doc-archive/internal/handlers"
 	mdwr "github.com/AndB0ndar/doc-archive/internal/middleware"
 	"github.com/AndB0ndar/doc-archive/internal/repository"
 	"github.com/AndB0ndar/doc-archive/internal/service"
 )
 
+// @title           PDF Search API
+// @version         1.0
+// @description     API для интеллектуального поиска по документам.
+// @termsOfService  http://example.com/terms/
+
+// @contact.name   API Support
+// @contact.url    http://example.com/support
+// @contact.email  support@example.com
+
+// @license.name  MIT
+// @license.url   https://opensource.org/licenses/MIT
+
+// @host      localhost:8080
+// @BasePath  /
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
 func NewRouter(
 	userRepo *repository.UserRepository,
 	docRepo *repository.DocumentRepository,
@@ -53,6 +74,10 @@ func NewRouter(
 			r.Delete("/{id}", docHandler.DeleteDocument)
 		})
 	})
+
+	r.Get("/swagger/*", httpSwagger.Handler(
+		httpSwagger.URL("/swagger/doc.json"),
+	))
 
 	return r
 }
