@@ -28,9 +28,10 @@ func NewSearchService(
 }
 
 type SearchRequest struct {
-	Query string
-	Type  string
-	Limit int
+	Query  string
+	Type   string
+	UserID int
+	Limit  int
 }
 
 func (r *SearchRequest) Validate(defaultLimit, maxLimit int) error {
@@ -69,13 +70,13 @@ func (s *SearchService) Search(
 
 	switch req.Type {
 	case "", "text":
-		return s.chunkRepo.FullTextSearchChunks(req.Query, req.Limit)
+		return s.chunkRepo.FullTextSearchChunks(req.Query, req.UserID, req.Limit)
 	case "vector", "semantic":
 		embedding, err := s.embedderClient.Embed(req.Query)
 		if err != nil {
 			return nil, fmt.Errorf("%w: %v", ErrEmbedding, err)
 		}
-		return s.chunkRepo.SemanticSearchChunks(embedding, req.Limit)
+		return s.chunkRepo.SemanticSearchChunks(embedding, req.UserID, req.Limit)
 	default:
 		return nil, ErrInvalidType
 	}

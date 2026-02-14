@@ -28,6 +28,7 @@ All document storage and search logic is handled by that backend.
 |--------------------|--------------------------------------------------|-----------------------|
 | `GO_API_BASE_URL`  | Base URL of the Go backend API                   | `http://0.0.0.0:8080` |
 | `UPLOAD_FOLDER`    | Directory where uploaded PDFs are stored         | `/app/uploads`        |
+| `SECRET_KEY`       | Unique string used for cryptographic signing of data | autogen |
 
 ## Building the Docker Image
 

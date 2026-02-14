@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/AndB0ndar/doc-archive/internal/auth"
 	"github.com/AndB0ndar/doc-archive/internal/config"
 	"github.com/AndB0ndar/doc-archive/internal/db"
 	"github.com/AndB0ndar/doc-archive/internal/logger"
@@ -30,6 +31,11 @@ func (a *App) Run() error {
 	logger.Setup(a.config.Env)
 	slog.Info("config loaded", "port", a.config.Port, "env", a.config.Env)
 
+	auth.SetJWTSecret(a.config.JWTSecret)
+	if a.config.JWTSecret == "default-secret-change-me" && a.config.Env == "production" {
+		slog.Warn("JWT_SECRET is set to default value, please change it in production")
+	}
+
 	// DB
 	pool, err := db.NewPool(a.config.Database)
 	if err != nil {
@@ -43,6 +49,7 @@ func (a *App) Run() error {
 	// Repositories
 	docRepo := repository.NewDocumentRepository(pool)
 	chunkRepo := repository.NewChunkRepository(pool)
+	userRepo := repository.NewUserRepository(pool)
 
 	// Service
 	embedderService := service.NewEmbedder(a.config)
@@ -53,7 +60,7 @@ func (a *App) Run() error {
 		a.config, chunkRepo, embedderService,
 	)
 
-	handler := server.NewRouter(docRepo, docService, searchService)
+	handler := server.NewRouter(userRepo, docRepo, docService, searchService)
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", a.config.Port),

@@ -1,10 +1,14 @@
 import os
+#import redis
+import secrets
 import logging
 import requests
 
 from flask import Flask
-from flask import render_template, request, redirect, url_for, abort
-from flask import make_response, send_from_directory, after_this_request
+from flask import render_template, request, redirect, url_for, abort, session
+from flask import flash, make_response, send_from_directory, after_this_request
+
+#from flask_session import Session
 
 from flasgger import Swagger
 
@@ -13,11 +17,23 @@ from flasgger import Swagger
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 app = Flask(__name__)
+app.secret_key = os.getenv('SECRET_KEY', secrets.token_urlsafe(16))
+
+
+# Setting Redis for store session
+#app.config['SESSION_TYPE'] = 'redis'
+#app.config['SESSION_PERMANENT'] = False
+#app.config['SESSION_USE_SIGNER'] = True
+#app.config['SESSION_REDIS'] = redis.from_url(os.getenv('REDIS_URL', 'redis://redis:6379/0'))
+#Session(app)
+
 
 # Configuration from environment variables
 app.config['GO_API_BASE_URL'] = os.getenv('GO_API_BASE_URL', 'http://api:8080')
 app.config['UPLOAD_DIR'] = os.getenv('UPLOAD_DIR', '/app/uploads')
+
 
 # Swagger configuration
 app.config['SWAGGER'] = {
@@ -38,26 +54,32 @@ app.config['SWAGGER'] = {
 }
 swagger = Swagger(app)
 
+
 # ----------------------------------------------------------------------
 # Utility: call the Go backend API
 # ----------------------------------------------------------------------
-def call_go_api(endpoint, method='GET', **kwargs):
+def call_go_api(endpoint, method='GET', headers={}, **kwargs):
     """
     Send a request to the Go backend API and return (response_json, error_message).
     """
     url = f"{app.config['GO_API_BASE_URL']}/{endpoint.lstrip('/')}"
     try:
         if method == 'GET':
-            resp = requests.get(url, params=kwargs.get('params'), timeout=10)
+            resp = requests.get(
+                url,
+                params=kwargs.get('params'),
+                headers=headers,
+                timeout=10
+            )
         elif method == 'POST':
             resp = requests.post(
                 url,
                 data=kwargs.get('data'),
-                files=kwargs.get('files'),
+                files=kwargs.get('files'), headers=headers,
                 timeout=3
             )
         elif method == 'DELETE':
-            resp = requests.delete(url, timeout=10)
+            resp = requests.delete(url, headers=headers, timeout=10)
         else:
             return None, f'Unsupported method: {method}'
 
@@ -67,7 +89,7 @@ def call_go_api(endpoint, method='GET', **kwargs):
             try:
                 return resp.json(), None
             except ValueError:
-                app.logger.warning(
+                logger.warning(
                     f"Non-JSON response (status {resp.status_code})"
                     f" from {url}: {resp.text[:200]}"
                 )
@@ -78,6 +100,25 @@ def call_go_api(endpoint, method='GET', **kwargs):
     except requests.exceptions.RequestException as e:
         logger.error(f"Error calling Go API at {url}: {e}")
         return None, str(e)
+
+
+def call_go_api_auth(endpoint, method='GET', **kwargs):
+    """As call_go_api_auth. Adds an authorization token to the request."""
+    token = session.get('token')
+    headers = {'Authorization': f'Bearer {token}'} if token else {}
+    return call_go_api(endpoint, method, headers, **kwargs)
+
+
+def login_required(f):
+    """A decorator for checking the presence of a token in the session."""
+    from functools import wraps
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'token' not in session:
+            flash('Пожалуйста, войдите в систему')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 
 # ----------------------------------------------------------------------
@@ -105,7 +146,114 @@ def health():
     return {"status": "ok"}
 
 
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """
+    Handle user login.
+    ---
+    tags:
+      - Authentication
+    parameters:
+      - name: email
+        in: formData
+        type: string
+        required: true
+        description: User's email address
+      - name: password
+        in: formData
+        type: string
+        required: true
+        description: User's password
+    responses:
+      200:
+        description: Renders login.html (GET request)
+      302:
+        description: Redirect to index after successful login (POST)
+      401:
+        description: Invalid email or password
+      500:
+        description: Connection error with authentication server
+    """
+    if request.method == 'POST':
+        data = {'email': request.form['email'], 'password': request.form['password']}
+        try:
+            resp = requests.post(f"{app.config['GO_API_BASE_URL']}/login", json=data)
+            if resp.status_code == 200:
+                session['token'] = resp.json()['token']
+                session['user'] = resp.json()['user']
+                #session.permanent = True
+                return redirect(url_for('index'))
+            else:
+                logger.error("Invalid email or password")
+                flash("Invalid email or password")
+        except:
+            logger.error("Server connection error")
+            flash("Server connection error")
+    return render_template('login.html')
+
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    """
+    Handle user registration.
+    ---
+    tags:
+      - Authentication
+    parameters:
+      - name: email
+        in: formData
+        type: string
+        required: true
+        description: User's email address
+      - name: password
+        in: formData
+        type: string
+        required: true
+        description: User's password
+    responses:
+      200:
+        description: Renders register.html (GET request)
+      302:
+        description: Redirect to login after successful registration (POST)
+      400:
+        description: Registration error (e.g., email already taken)
+      500:
+        description: Connection error with registration server
+    """
+    if request.method == 'POST':
+        data = {'email': request.form['email'], 'password': request.form['password']}
+        try:
+            resp = requests.post(f"{app.config['GO_API_BASE_URL']}/register", json=data)
+            if resp.status_code == 200:
+                logger.info("Registration is successful, log in")
+                flash("Registration is successful, log in")
+                return redirect(url_for('login'))
+            else:
+                logger.error(f"Register error: {resp.text}")
+                flash(f"Register error: {resp.text}")
+        except:
+            logger.error("Server connection error")
+            flash("Server connection error")
+    return render_template('register.html')
+
+
+@app.route('/logout')
+def logout():
+    """
+    Log out the current user.
+    ---
+    tags:
+      - Authentication
+    responses:
+      302:
+        description: Redirect to login page after clearing session
+    """
+    session.clear()
+    return redirect(url_for('login'))
+
+
 @app.route('/')
+@login_required
 def index():
     """
     Home page with search form.
@@ -116,13 +264,14 @@ def index():
       200:
         description: Renders index.html
     """
-    docs, err = call_go_api('/documents')
+    docs, err = call_go_api_auth('/documents')
     if err:
         docs = []
     return render_template('index.html', documents=docs)
 
 
 @app.route('/upload', methods=['GET', 'POST'])
+@login_required
 def upload():
     """
     Upload a new PDF document with metadata.
@@ -183,7 +332,7 @@ def upload():
     }
     files = {'file': (file.filename, file.stream, file.mimetype)}
 
-    result, err = call_go_api('/upload', method='POST', data=data, files=files)
+    result, err = call_go_api_auth('/upload', method='POST', data=data, files=files)
     if err:
         logger.error(f"Upload failed: {err}")
         return f"Upload failed: {err}", 500
@@ -193,6 +342,7 @@ def upload():
 
 
 @app.route('/documents/<int:doc_id>')
+@login_required
 def document(doc_id):
     """
     Display a single document with its metadata and embedded PDF.
@@ -211,13 +361,14 @@ def document(doc_id):
       404:
         description: Document not found
     """
-    doc, err = call_go_api(f'/documents/{doc_id}')
+    doc, err = call_go_api_auth(f'/documents/{doc_id}')
     if err or doc is None:
         abort(404)
     return render_template('document.html', doc=doc)
 
 
 @app.route('/documents/<int:doc_id>/delete', methods=['DELETE'])
+@login_required
 def delete_document(doc_id):
     """
     Delete a document via Go API.
@@ -236,7 +387,9 @@ def delete_document(doc_id):
       500:
         description: Deletion failed due to API error
     """
-    result, err = call_go_api(f'/documents/{doc_id}', method='DELETE')
+    logger.debug(f"Session in DELETE : {dict(session)}")
+
+    result, err = call_go_api_auth(f'/documents/{doc_id}', method='DELETE')
     if err:
         logger.error(f"Failed to delete document {doc_id}: {err}")
         return f"Delete failed: {err}", 500
@@ -246,6 +399,7 @@ def delete_document(doc_id):
 
 
 @app.route('/uploads/<path:filename>')
+@login_required
 def uploaded_file(filename):
     """
     Serve uploaded PDF files for embedding (e.g., in PDF.js).
@@ -273,6 +427,7 @@ def uploaded_file(filename):
 
 
 @app.route('/search')
+@login_required
 def search():
     """
     htmx endpoint: returns an HTML fragment with search results.
@@ -303,12 +458,14 @@ def search():
       500:
         description: Backend API error
     """
+    logger.debug(f"Session in SEARCH: {dict(session)}")
+
     query = request.args.get('q', '')
     search_type = request.args.get('type', 'text')
     if not query:
         return '', 400
 
-    results, err = call_go_api('/search', params={'q': query, 'type': search_type})
+    results, err = call_go_api_auth('/search', params={'q': query, 'type': search_type})
     if err:
         logger.error(f"Search error: {err}")
         return f"Search error: {err}", 500

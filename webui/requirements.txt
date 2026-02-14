@@ -1,4 +1,6 @@
 Flask
-requests
+Flask-Session
 flasgger
 gunicorn
+redis
+requests

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/AndB0ndar/doc-archive/internal/middleware"
 	"github.com/AndB0ndar/doc-archive/internal/service"
 )
 
@@ -21,9 +22,16 @@ func NewSearchHandler(searchService *service.SearchService) *SearchHandler {
 }
 
 func (h *SearchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(middleware.UserIDKey).(int)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	req := service.SearchRequest{
-		Query: r.URL.Query().Get("q"),
-		Type:  r.URL.Query().Get("type"),
+		Query:  r.URL.Query().Get("q"),
+		Type:   r.URL.Query().Get("type"),
+		UserID: userID,
 	}
 	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
 		if l, err := strconv.Atoi(limitStr); err == nil {

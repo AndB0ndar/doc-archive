@@ -18,6 +18,7 @@ type Config struct {
 	SearchMaxLimit     int
 	ChunkSize          int
 	ChunkOverlap       int
+	JWTSecret          string
 }
 
 type DatabaseConfig struct {
@@ -43,6 +44,7 @@ func Load() (*Config, error) {
 		UploadDir:          getEnv("UPLOAD_DIR", "uploads"),
 		EmbedderURL:        getEnv("EMBEDDER_URL", "http://localhost:5001"),
 		Env:                getEnv("ENV", "development"),
+		JWTSecret:          getEnv("SECRET_KEY", "default-secret-change-me"),
 		SearchDefaultLimit: 20,
 		SearchMaxLimit:     100,
 		ChunkSize:          2000,

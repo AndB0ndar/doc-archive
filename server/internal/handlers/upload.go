@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/AndB0ndar/doc-archive/internal/middleware"
 	"github.com/AndB0ndar/doc-archive/internal/service"
 )
 
@@ -22,6 +23,12 @@ func NewUploadHandler(service *service.DocumentService) *UploadHandler {
 }
 
 func (h *UploadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(middleware.UserIDKey).(int)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	// Request size limit (50 MB)
 	r.Body = http.MaxBytesReader(w, r.Body, 50<<20)
 
@@ -68,6 +75,7 @@ func (h *UploadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Authors:  strings.TrimSpace(r.FormValue("authors")),
 		Year:     strings.TrimSpace(r.FormValue("year")),
 		Category: strings.TrimSpace(r.FormValue("category")),
+		UserID:   userID,
 	}
 
 	id, err := h.service.Upload(params)

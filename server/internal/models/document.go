@@ -13,8 +13,5 @@ type Document struct {
 	FilePath  string    `json:"file_path"`
 	FileSize  int64     `json:"file_size"`
 	CreatedAt time.Time `json:"created_at"`
-}
-
-func (Document) TableName() string {
-	return "documents"
+	UserID    int       `json:"user_id"`
 }

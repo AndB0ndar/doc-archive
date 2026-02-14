@@ -40,7 +40,7 @@ func (r *ChunkRepository) Create(chunk *models.Chunk) (int64, error) {
 }
 
 func (r *ChunkRepository) FullTextSearchChunks(
-	query string, limit int,
+	query string, userID, limit int,
 ) ([]models.ChunkSearchResponse, error) {
 	if limit <= 0 {
 		limit = 20
@@ -58,11 +58,12 @@ func (r *ChunkRepository) FullTextSearchChunks(
 			d.year,
 			d.category
         FROM chunks c
-			JOIN documents d ON c.document_id = d.id
-			ORDER BY similarity(c.content, $1) DESC
-        LIMIT $2
+		JOIN documents d ON c.document_id = d.id
+		WHERE d.user_id = $2
+		ORDER BY similarity(c.content, $1) DESC
+        LIMIT $3
     ` // WHERE c.content % $1
-	rows, err := r.db.Query(r.ctx, sqlQuery, query, limit)
+	rows, err := r.db.Query(r.ctx, sqlQuery, query, userID, limit)
 	if err != nil {
 		return nil, fmt.Errorf("full text search chunks: %w", err)
 	}
@@ -85,7 +86,7 @@ func (r *ChunkRepository) FullTextSearchChunks(
 }
 
 func (r *ChunkRepository) SemanticSearchChunks(
-	embedding []float32, limit int,
+	embedding []float32, userID, limit int,
 ) ([]models.ChunkSearchResponse, error) {
 	vec := pgvector.NewVector(embedding)
 	query := `
@@ -95,11 +96,11 @@ func (r *ChunkRepository) SemanticSearchChunks(
 			d.title, d.authors, d.year, d.category
 		FROM chunks c
 		JOIN documents d ON c.document_id = d.id
-		WHERE c.embedding IS NOT NULL
+		WHERE c.embedding IS NOT NULL AND d.user_id = $2
 		ORDER BY c.embedding <=> $1
-		LIMIT $2
+		LIMIT $3
 	`
-	rows, err := r.db.Query(r.ctx, query, vec, limit)
+	rows, err := r.db.Query(r.ctx, query, vec, userID, limit)
 	if err != nil {
 		return nil, fmt.Errorf("semantic search chunks: %w", err)
 	}

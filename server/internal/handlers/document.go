@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/AndB0ndar/doc-archive/internal/middleware"
 	"github.com/AndB0ndar/doc-archive/internal/repository"
 )
 
@@ -21,6 +22,12 @@ func NewDocumentHandler(repo *repository.DocumentRepository) *DocumentHandler {
 }
 
 func (h *DocumentHandler) GetDocument(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(middleware.UserIDKey).(int)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -28,7 +35,7 @@ func (h *DocumentHandler) GetDocument(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	doc, err := h.repo.GetByID(id)
+	doc, err := h.repo.GetByID(id, userID)
 	if err != nil {
 		http.Error(w, "Document not found", http.StatusNotFound)
 		return
@@ -39,6 +46,12 @@ func (h *DocumentHandler) GetDocument(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *DocumentHandler) ListDocuments(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(middleware.UserIDKey).(int)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	limitStr := r.URL.Query().Get("limit")
 	offsetStr := r.URL.Query().Get("offset")
 
@@ -51,7 +64,7 @@ func (h *DocumentHandler) ListDocuments(w http.ResponseWriter, r *http.Request) 
 		offset = 0
 	}
 
-	docs, err := h.repo.GetAll(limit, offset)
+	docs, err := h.repo.GetAll(userID, limit, offset)
 	if err != nil {
 		slog.Error("failed to list documents", "error", err)
 		http.Error(w, "Failed to fetch documents", http.StatusInternalServerError)
@@ -65,6 +78,12 @@ func (h *DocumentHandler) ListDocuments(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *DocumentHandler) DeleteDocument(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(middleware.UserIDKey).(int)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -72,7 +91,7 @@ func (h *DocumentHandler) DeleteDocument(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	doc, err := h.repo.GetByID(id)
+	doc, err := h.repo.GetByID(id, userID)
 	if err != nil {
 		http.Error(w, "Document not found", http.StatusNotFound)
 		return
@@ -84,7 +103,7 @@ func (h *DocumentHandler) DeleteDocument(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if err := h.repo.Delete(id); err != nil {
+	if err := h.repo.Delete(id, userID); err != nil {
 		slog.Error("failed to delete document from DB", "id", id, "error", err)
 		http.Error(w, "Failed to delete document from database", http.StatusInternalServerError)
 		return

@@ -46,6 +46,7 @@ type UploadParams struct {
 	Authors  string
 	Year     string
 	Category string
+	UserID   int
 }
 
 func (s *DocumentService) Upload(params *UploadParams) (int, error) {
@@ -102,6 +103,7 @@ func (s *DocumentService) Upload(params *UploadParams) (int, error) {
 		Category: categoryPtr,
 		FilePath: fullPath,
 		FileSize: written,
+		UserID:   params.UserID,
 	}
 
 	id, err := s.docRepo.Create(doc)

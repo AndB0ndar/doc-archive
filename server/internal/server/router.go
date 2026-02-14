@@ -15,6 +15,7 @@ import (
 )
 
 func NewRouter(
+	userRepo *repository.UserRepository,
 	docRepo *repository.DocumentRepository,
 	docService *service.DocumentService,
 	searchService *service.SearchService,
@@ -29,19 +30,28 @@ func NewRouter(
 
 	r.Use(mdwr.Logger(slog.Default()))
 
+	authHandler := handlers.NewAuthHandler(userRepo)
+	uploadHandler := handlers.NewUploadHandler(docService)
+	searchAPIHandler := handlers.NewSearchHandler(searchService)
+	docHandler := handlers.NewDocumentHandler(docRepo) // FIXME
+
 	r.Get("/health", handlers.Health)
 
-	uploadHandler := handlers.NewUploadHandler(docService)
-	r.Post("/upload", uploadHandler.ServeHTTP)
+	r.Post("/register", authHandler.Register)
+	r.Post("/login", authHandler.Login)
 
-	searchAPIHandler := handlers.NewSearchHandler(searchService)
-	r.Get("/search", searchAPIHandler.ServeHTTP)
+	r.Group(func(r chi.Router) {
+		r.Use(mdwr.AuthMiddleware)
 
-	docHandler := handlers.NewDocumentHandler(docRepo) // FIXME
-	r.Route("/documents", func(r chi.Router) {
-		r.Get("/", docHandler.ListDocuments)
-		r.Get("/{id}", docHandler.GetDocument)
-		r.Delete("/{id}", docHandler.DeleteDocument)
+		r.Post("/upload", uploadHandler.ServeHTTP)
+
+		r.Get("/search", searchAPIHandler.ServeHTTP)
+
+		r.Route("/documents", func(r chi.Router) {
+			r.Get("/", docHandler.ListDocuments)
+			r.Get("/{id}", docHandler.GetDocument)
+			r.Delete("/{id}", docHandler.DeleteDocument)
+		})
 	})
 
 	return r
