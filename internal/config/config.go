@@ -9,13 +9,15 @@ import (
 )
 
 type Config struct {
-	Port         int
-	Env          string
-	UploadDir    string
-	EmbedderURL  string
-	Database     DatabaseConfig
-	ChunkSize    int
-	ChunkOverlap int
+	Port               int
+	Env                string
+	UploadDir          string
+	EmbedderURL        string
+	Database           DatabaseConfig
+	SearchDefaultLimit int
+	SearchMaxLimit     int
+	ChunkSize          int
+	ChunkOverlap       int
 }
 
 type DatabaseConfig struct {
@@ -37,12 +39,14 @@ func Load() (*Config, error) {
 	}
 
 	return &Config{
-		Port:         port,
-		UploadDir:    getEnv("UPLOAD_DIR", "uploads"),
-		EmbedderURL:  getEnv("EMBEDDER_URL", "http://localhost:5001"),
-		Env:          getEnv("ENV", "development"),
-		ChunkSize:    2000,
-		ChunkOverlap: 200,
+		Port:               port,
+		UploadDir:          getEnv("UPLOAD_DIR", "uploads"),
+		EmbedderURL:        getEnv("EMBEDDER_URL", "http://localhost:5001"),
+		Env:                getEnv("ENV", "development"),
+		SearchDefaultLimit: 20,
+		SearchMaxLimit:     100,
+		ChunkSize:          2000,
+		ChunkOverlap:       200,
 		Database: DatabaseConfig{
 			URL:               getEnv("DATABASE_URL", "postgres://user:pass@localhost:5432/docdb?sslmode=disable"),
 			MigrationsPath:    getEnv("MIGRATIONS_PATH", "migrations"),

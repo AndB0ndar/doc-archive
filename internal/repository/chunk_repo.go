@@ -3,26 +3,12 @@ package repository
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pgvector/pgvector-go"
 
 	"github.com/AndB0ndar/doc-archive/internal/models"
 )
-
-type ChunkSearchResult struct {
-	ChunkID    int64     `json:"chunk_id"`
-	DocumentID int       `json:"document_id"`
-	ChunkIndex int       `json:"chunk_index"`
-	Content    string    `json:"content"`
-	CreatedAt  time.Time `json:"created_at"`
-	Similarity float64   `json:"similarity"` // from 0 to 1
-	Title      string    `json:"title"`
-	Authors    *string   `json:"authors,omitempty"`
-	Year       *int      `json:"year,omitempty"`
-	Category   *string   `json:"category,omitempty"`
-}
 
 type ChunkRepository struct {
 	ctx context.Context
@@ -53,7 +39,9 @@ func (r *ChunkRepository) Create(chunk *models.Chunk) (int64, error) {
 	return chunk.ID, nil
 }
 
-func (r *ChunkRepository) FullTextSearchChunks(query string, limit int) ([]ChunkSearchResult, error) {
+func (r *ChunkRepository) FullTextSearchChunks(
+	query string, limit int,
+) ([]models.ChunkSearchResponse, error) {
 	if limit <= 0 {
 		limit = 20
 	}
@@ -81,9 +69,9 @@ func (r *ChunkRepository) FullTextSearchChunks(query string, limit int) ([]Chunk
 	}
 	defer rows.Close()
 
-	var results []ChunkSearchResult
+	var results []models.ChunkSearchResponse
 	for rows.Next() {
-		var r ChunkSearchResult
+		var r models.ChunkSearchResponse
 		if err := rows.Scan(
 			&r.ChunkID, &r.DocumentID, &r.ChunkIndex, &r.Content,
 			&r.CreatedAt,
@@ -97,7 +85,9 @@ func (r *ChunkRepository) FullTextSearchChunks(query string, limit int) ([]Chunk
 	return results, nil
 }
 
-func (r *ChunkRepository) SemanticSearchChunks(embedding []float32, limit int) ([]ChunkSearchResult, error) {
+func (r *ChunkRepository) SemanticSearchChunks(
+	embedding []float32, limit int,
+) ([]models.ChunkSearchResponse, error) {
 	vec := pgvector.NewVector(embedding)
 	query := `
 		SELECT 
@@ -116,9 +106,9 @@ func (r *ChunkRepository) SemanticSearchChunks(embedding []float32, limit int) (
 	}
 	defer rows.Close()
 
-	var results []ChunkSearchResult
+	var results []models.ChunkSearchResponse
 	for rows.Next() {
-		var r ChunkSearchResult
+		var r models.ChunkSearchResponse
 		if err := rows.Scan(
 			&r.ChunkID, &r.DocumentID, &r.ChunkIndex, &r.Content, &r.CreatedAt,
 			&r.Similarity,

@@ -2,79 +2,38 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
-	"strings"
 
-	"github.com/AndB0ndar/doc-archive/internal/config"
-	"github.com/AndB0ndar/doc-archive/internal/repository"
-	"github.com/AndB0ndar/doc-archive/internal/vectorizer"
+	"github.com/AndB0ndar/doc-archive/internal/service"
 )
 
 type SearchHandler struct {
-	cfg            *config.Config
-	docRepo        *repository.DocumentRepository
-	chunkRepo      *repository.ChunkRepository
-	embedderClient *vectorizer.Client
+	searchService *service.SearchService
 }
 
-func NewSearchHandler(
-	cfg *config.Config,
-	docRepo *repository.DocumentRepository,
-	chunkRepo *repository.ChunkRepository,
-	embedderClient *vectorizer.Client,
-) *SearchHandler {
+func NewSearchHandler(searchService *service.SearchService) *SearchHandler {
 	return &SearchHandler{
-		cfg:            cfg,
-		docRepo:        docRepo,
-		chunkRepo:      chunkRepo,
-		embedderClient: embedderClient,
+		searchService: searchService,
 	}
 }
 
 func (h *SearchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	query := strings.TrimSpace(r.URL.Query().Get("q"))
-	searchType := strings.ToLower(r.URL.Query().Get("type"))
-	limitStr := r.URL.Query().Get("limit")
-
-	if query == "" {
-		http.Error(w, "Missing search query (q)", http.StatusBadRequest)
-		return
+	req := service.SearchRequest{
+		Query: r.URL.Query().Get("q"),
+		Type:  r.URL.Query().Get("type"),
 	}
-
-	limit := 20
-	if limitStr != "" {
-		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 && l <= 100 {
-			limit = l
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil {
+			req.Limit = l
 		}
 	}
 
-	var results []repository.ChunkSearchResult
-	var err error
-
-	switch searchType {
-	case "", "text":
-		slog.Debug("full-text search by chunks", "query", query, "limit", limit)
-		results, err = h.chunkRepo.FullTextSearchChunks(query, limit)
-
-	case "vector", "semantic":
-		embedding, err := h.embedderClient.Embed(query)
-		if err != nil {
-			slog.Error("failed to get embedding for query", "error", err)
-			http.Error(w, "Search service unavailable", http.StatusServiceUnavailable)
-			return
-		}
-		results, err = h.chunkRepo.SemanticSearchChunks(embedding, limit)
-
-	default:
-		http.Error(w, "Invalid search type. Use 'text' or 'vector'", http.StatusBadRequest)
-		return
-	}
-
+	results, err := h.searchService.Search(req)
 	if err != nil {
-		slog.Error("search failed", "type", searchType, "error", err)
-		http.Error(w, "Search failed", http.StatusInternalServerError)
+		h.handleError(w, err)
 		return
 	}
 
@@ -82,5 +41,28 @@ func (h *SearchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(results); err != nil {
 		slog.Error("failed to encode search results", "error", err)
+	}
+}
+
+func (h *SearchHandler) handleError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, service.ErrEmptyQuery):
+		http.Error(w, "Missing search query (q)", http.StatusBadRequest)
+	case errors.Is(err, service.ErrInvalidType):
+		http.Error(
+			w,
+			"Invalid search type. Use 'text' or 'semantic'",
+			http.StatusBadRequest,
+		)
+	case errors.Is(err, service.ErrEmbedding):
+		slog.Error("embedding failed", "error", err)
+		http.Error(
+			w,
+			"Search service unavailable",
+			http.StatusServiceUnavailable,
+		)
+	default:
+		slog.Error("search failed", "error", err)
+		http.Error(w, "Search failed", http.StatusInternalServerError)
 	}
 }

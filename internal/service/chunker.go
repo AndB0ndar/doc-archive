@@ -1,4 +1,4 @@
-package chunker
+package service
 
 func Chunk(text string, chunkSize, overlap int) []string {
 	if len(text) == 0 {

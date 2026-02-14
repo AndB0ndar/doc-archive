@@ -36,3 +36,27 @@ func (r *DocumentRepository) Create(doc *models.Document) (int, error) {
 
 	return doc.ID, nil
 }
+
+func (r *DocumentRepository) GetByID(id int) (*models.Document, error) {
+	query := `
+		SELECT
+			id,
+			title,
+			authors,
+			year,
+			category,
+			file_path,
+			file_size,
+			created_at
+		FROM documents WHERE id = $1
+	`
+	var doc models.Document
+	err := r.db.QueryRow(r.ctx, query, id).Scan(
+		&doc.ID, &doc.Title, &doc.Authors, &doc.Year, &doc.Category,
+		&doc.FilePath, &doc.FileSize, &doc.CreatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &doc, nil
+}

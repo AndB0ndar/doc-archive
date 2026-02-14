@@ -1,4 +1,4 @@
-package pdfextractor
+package service
 
 import (
 	"fmt"

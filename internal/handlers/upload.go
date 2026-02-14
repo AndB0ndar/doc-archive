@@ -2,49 +2,25 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
-	"github.com/google/uuid"
-
-	"github.com/AndB0ndar/doc-archive/internal/chunker"
-	"github.com/AndB0ndar/doc-archive/internal/config"
-	"github.com/AndB0ndar/doc-archive/internal/models"
-	"github.com/AndB0ndar/doc-archive/internal/pdfextractor"
-	"github.com/AndB0ndar/doc-archive/internal/repository"
-	"github.com/AndB0ndar/doc-archive/internal/vectorizer"
+	"github.com/AndB0ndar/doc-archive/internal/service"
 )
 
 type UploadHandler struct {
-	cfg            *config.Config
-	docRepo        *repository.DocumentRepository
-	chunkRepo      *repository.ChunkRepository
-	embedderClient *vectorizer.Client
-	uploadDir      string
+	service *service.DocumentService
 }
 
-func NewUploadHandler(
-	cfg *config.Config,
-	docRepo *repository.DocumentRepository,
-	chunkRepo *repository.ChunkRepository,
-	embedderClient *vectorizer.Client,
-) *UploadHandler {
+func NewUploadHandler(service *service.DocumentService) *UploadHandler {
 	return &UploadHandler{
-		cfg:            cfg,
-		docRepo:        docRepo,
-		chunkRepo:      chunkRepo,
-		embedderClient: embedderClient,
-		uploadDir:      cfg.UploadDir,
+		service: service,
 	}
 }
 
-// ServeHTTP process POST /upload
 func (h *UploadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Request size limit (50 MB)
 	r.Body = http.MaxBytesReader(w, r.Body, 50<<20)
@@ -85,76 +61,18 @@ func (h *UploadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Required fields
-	title := r.FormValue("title")
-	if strings.TrimSpace(title) == "" {
-		http.Error(w, "Title is required", http.StatusBadRequest)
-		return
+	params := &service.UploadParams{
+		File:     file,
+		Header:   header,
+		Title:    strings.TrimSpace(r.FormValue("title")),
+		Authors:  strings.TrimSpace(r.FormValue("authors")),
+		Year:     strings.TrimSpace(r.FormValue("year")),
+		Category: strings.TrimSpace(r.FormValue("category")),
 	}
 
-	// Optional fields
-	var authors *string
-	if v := r.FormValue("authors"); v != "" {
-		authors = &v
-	}
-	var year *int
-	if v := r.FormValue("year"); v != "" {
-		var y int
-		if _, err := fmt.Sscanf(v, "%d", &y); err == nil && y > 0 && y <= time.Now().Year()+1 {
-			year = &y
-		}
-	}
-	var category *string
-	if v := r.FormValue("category"); v != "" {
-		category = &v
-	}
-
-	// Generate uniqe name of file
-	uniqueID := uuid.New().String()
-	filename := uniqueID + ".pdf"
-	fullPath := filepath.Join(h.uploadDir, filename)
-
-	// Create directory (if not exist)
-	if err := os.MkdirAll(h.uploadDir, 0755); err != nil {
-		slog.Error("failed to create upload directory", "error", err)
-		http.Error(w, "Server error", http.StatusInternalServerError)
-		return
-	}
-
-	// Save file
-	dst, err := os.Create(fullPath)
+	id, err := h.service.Upload(params)
 	if err != nil {
-		slog.Error("failed to create destination file", "error", err)
-		http.Error(w, "Failed to save file", http.StatusInternalServerError)
-		return
-	}
-	defer dst.Close()
-
-	written, err := io.Copy(dst, file)
-	if err != nil {
-		slog.Error("failed to copy file", "error", err)
-		http.Error(w, "Failed to save file", http.StatusInternalServerError)
-		return
-	}
-
-	doc := &models.Document{
-		Title:    title,
-		Authors:  authors,
-		Year:     year,
-		Category: category,
-		FilePath: fullPath,
-		FileSize: written,
-	}
-
-	id, err := h.docRepo.Create(doc)
-	if err != nil {
-		slog.Error("failed to save document metadata", "error", err)
-		os.Remove(fullPath) // remove file, if not save in DB
-		http.Error(
-			w,
-			"Failed to save document metadata",
-			http.StatusInternalServerError,
-		)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -165,43 +83,4 @@ func (h *UploadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		"message": "Document uploaded successfully. Processing started.",
 		"status":  "pending",
 	})
-
-	slog.Info("document uploaded", "id", id, "title", title, "size", written)
-
-	// Background processing (does not block the response)
-	go h.processDocument(id, fullPath)
-}
-
-func (h *UploadHandler) processDocument(docID int, filePath string) {
-	slog.Info("starting document processing", "id", docID, "path", filePath)
-
-	text, err := pdfextractor.ExtractText(filePath)
-	if err != nil {
-		slog.Error("failed to extract text from PDF", "id", docID, "error", err)
-		// TODO: can write error in database, in status field
-		return
-	}
-
-	chunkSize := h.cfg.ChunkSize
-	overlap := h.cfg.ChunkOverlap
-	chunks := chunker.Chunk(text, chunkSize, overlap)
-	slog.Info("text chunked", "id", docID, "chunks", len(chunks))
-
-	for idx, chunkText := range chunks {
-		embedding, err := h.embedderClient.Embed(chunkText)
-		if err != nil {
-			slog.Error("failed to get embedding for chunk", "doc_id", docID, "chunk_idx", idx, "error", err)
-			continue
-		}
-		chunk := &models.Chunk{
-			DocumentID: docID,
-			ChunkIndex: idx,
-			Content:    chunkText,
-			Embedding:  embedding,
-		}
-		if _, err := h.chunkRepo.Create(chunk); err != nil {
-			slog.Error("failed to save chunk", "doc_id", docID, "chunk_idx", idx, "error", err)
-		}
-	}
-	slog.Info("document chunks processed", "id", docID)
 }
