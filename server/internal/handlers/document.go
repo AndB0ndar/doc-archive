@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
@@ -61,4 +62,33 @@ func (h *DocumentHandler) ListDocuments(w http.ResponseWriter, r *http.Request) 
 	if err := json.NewEncoder(w).Encode(docs); err != nil {
 		slog.Error("failed to encode documents", "error", err)
 	}
+}
+
+func (h *DocumentHandler) DeleteDocument(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Invalid document ID", http.StatusBadRequest)
+		return
+	}
+
+	doc, err := h.repo.GetByID(id)
+	if err != nil {
+		http.Error(w, "Document not found", http.StatusNotFound)
+		return
+	}
+
+	if err := os.Remove(doc.FilePath); err != nil && !os.IsNotExist(err) {
+		slog.Error("failed to delete file", "path", doc.FilePath, "error", err)
+		http.Error(w, "Failed to delete file", http.StatusInternalServerError)
+		return
+	}
+
+	if err := h.repo.Delete(id); err != nil {
+		slog.Error("failed to delete document from DB", "id", id, "error", err)
+		http.Error(w, "Failed to delete document from database", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }

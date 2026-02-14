@@ -9,11 +9,20 @@
 
 <div class="pdf-viewer">
     <iframe 
-        src="//mozilla.github.io/pdf.js/web/viewer.html?file={{ url_for('uploaded_file', filename=doc.file_path.split('/')[-1], _external=True) }}"
+        src="{{ url_for('static', filename='pdfjs/web/viewer.html') }}?file={{ url_for('uploaded_file', filename=doc.file_path.split('/')[-1]) }}" 
         width="100%" 
         height="600px">
     </iframe>
 </div>
 
-<a href="{{ url_for('index') }}">Назад к поиску</a>
+<div class="actions">
+    <button class="delete-btn"
+            hx-delete="{{ url_for('delete_document', doc_id=doc.id) }}"
+            hx-confirm="Вы уверены, что хотите удалить этот документ?"
+            hx-target="body"
+            hx-indicator="#spinner">
+        Удалить документ
+    </button>
+    <a href="{{ url_for('index') }}" class="button">Назад к поиску</a>
+</div>
 {% endblock %}

@@ -99,3 +99,15 @@ func (r *DocumentRepository) GetAll(
 	}
 	return docs, nil
 }
+
+func (r *DocumentRepository) Delete(id int) error {
+	query := `DELETE FROM documents WHERE id = $1`
+	cmdTag, err := r.db.Exec(r.ctx, query, id)
+	if err != nil {
+		return fmt.Errorf("delete document: %w", err)
+	}
+	if cmdTag.RowsAffected() == 0 {
+		return fmt.Errorf("document with id %d not found", id)
+	}
+	return nil
+}

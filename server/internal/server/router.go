@@ -38,8 +38,11 @@ func NewRouter(
 	r.Get("/search", searchAPIHandler.ServeHTTP)
 
 	docHandler := handlers.NewDocumentHandler(docRepo) // FIXME
-	r.Get("/documents", docHandler.ListDocuments)
-	r.Get("/documents/{id}", docHandler.GetDocument)
+	r.Route("/documents", func(r chi.Router) {
+		r.Get("/", docHandler.ListDocuments)
+		r.Get("/{id}", docHandler.GetDocument)
+		r.Delete("/{id}", docHandler.DeleteDocument)
+	})
 
 	return r
 }

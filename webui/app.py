@@ -4,7 +4,7 @@ import requests
 
 from flask import Flask
 from flask import render_template, request, redirect, url_for, abort
-from flask import send_from_directory, after_this_request
+from flask import make_response, send_from_directory, after_this_request
 
 from flasgger import Swagger
 
@@ -50,13 +50,30 @@ def call_go_api(endpoint, method='GET', **kwargs):
         if method == 'GET':
             resp = requests.get(url, params=kwargs.get('params'), timeout=10)
         elif method == 'POST':
-            # Files and form data are expected for uploads
-            resp = requests.post(url, data=kwargs.get('data'), files=kwargs.get('files'), timeout=30)
+            resp = requests.post(
+                url,
+                data=kwargs.get('data'),
+                files=kwargs.get('files'),
+                timeout=3
+            )
+        elif method == 'DELETE':
+            resp = requests.delete(url, timeout=10)
         else:
             return None, f'Unsupported method: {method}'
 
         resp.raise_for_status()
-        return resp.json(), None
+
+        if resp.content:
+            try:
+                return resp.json(), None
+            except ValueError:
+                app.logger.warning(
+                    f"Non-JSON response (status {resp.status_code})"
+                    f" from {url}: {resp.text[:200]}"
+                )
+                return resp.text, None
+        else:
+            return None, None
 
     except requests.exceptions.RequestException as e:
         logger.error(f"Error calling Go API at {url}: {e}")
@@ -200,6 +217,34 @@ def document(doc_id):
     return render_template('document.html', doc=doc)
 
 
+@app.route('/documents/<int:doc_id>/delete', methods=['DELETE'])
+def delete_document(doc_id):
+    """
+    Delete a document via Go API.
+    ---
+    tags:
+      - Delete
+    parameters:
+      - name: doc_id
+        in: path
+        type: integer
+        required: true
+        description: Unique document identifier
+    responses:
+      302:
+        description: Redirect to index after successful deletion
+      500:
+        description: Deletion failed due to API error
+    """
+    result, err = call_go_api(f'/documents/{doc_id}', method='DELETE')
+    if err:
+        logger.error(f"Failed to delete document {doc_id}: {err}")
+        return f"Delete failed: {err}", 500
+    response = make_response('', 200)
+    response.headers['HX-Redirect'] = url_for('index')
+    return response
+
+
 @app.route('/uploads/<path:filename>')
 def uploaded_file(filename):
     """
@@ -224,10 +269,6 @@ def uploaded_file(filename):
       404:
         description: File not found
     """
-    @after_this_request
-    def add_cors(response):
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        return response
     return send_from_directory(app.config['UPLOAD_DIR'], filename)
 
 
