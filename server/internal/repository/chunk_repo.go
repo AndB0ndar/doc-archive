@@ -59,10 +59,9 @@ func (r *ChunkRepository) FullTextSearchChunks(
 			d.category
         FROM chunks c
 			JOIN documents d ON c.document_id = d.id
-			WHERE c.content % $1
 			ORDER BY similarity(c.content, $1) DESC
         LIMIT $2
-    `
+    `  // WHERE c.content % $1
 	rows, err := r.db.Query(r.ctx, sqlQuery, query, limit)
 	if err != nil {
 		return nil, fmt.Errorf("full text search chunks: %w", err)

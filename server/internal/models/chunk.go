@@ -25,4 +25,3 @@ type ChunkSearchResponse struct {
 	Year       *int      `json:"year,omitempty"`
 	Category   *string   `json:"category,omitempty"`
 }
-

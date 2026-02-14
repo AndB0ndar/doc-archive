@@ -1,11 +1,11 @@
 package middleware
 
 import (
+	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5/middleware"
-	"log/slog"
 )
 
 func Logger(logger *slog.Logger) func(next http.Handler) http.Handler {

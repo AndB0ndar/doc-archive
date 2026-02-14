@@ -1,0 +1,14 @@
+{% if results %}
+<ul class="results-list">
+    {% for r in results %}
+    <li>
+        <a href="{{ url_for('document', doc_id=r.document_id) }}">{{ r.title }}</a>
+        <span class="similarity">({{ "%.2f"|format(r.similarity * 100) }}%)</span>
+        <p class="snippet">{{ r.content[:200] }}...</p>
+        <small>Авторы: {{ r.authors or 'неизвестны' }}, год: {{ r.year or '—' }}, категория: {{ r.category or '—' }}</small>
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+<p>Ничего не найдено.</p>
+{% endif %}

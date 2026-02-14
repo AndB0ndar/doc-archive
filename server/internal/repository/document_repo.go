@@ -60,3 +60,42 @@ func (r *DocumentRepository) GetByID(id int) (*models.Document, error) {
 	}
 	return &doc, nil
 }
+
+func (r *DocumentRepository) GetAll(
+	limit, offset int,
+) ([]models.Document, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	query := `
+        SELECT
+			id,
+			title,
+			authors,
+			year,
+			category,
+			file_path,
+			file_size,
+			created_at
+        FROM documents ORDER BY created_at DESC
+        LIMIT $1 OFFSET $2
+    `
+	rows, err := r.db.Query(r.ctx, query, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("get all documents: %w", err)
+	}
+	defer rows.Close()
+
+	var docs []models.Document
+	for rows.Next() {
+		var d models.Document
+		if err := rows.Scan(
+			&d.ID, &d.Title, &d.Authors, &d.Year, &d.Category,
+			&d.FilePath, &d.FileSize, &d.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan document: %w", err)
+		}
+		docs = append(docs, d)
+	}
+	return docs, nil
+}

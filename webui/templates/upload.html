@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Загрузка PDF</h2>
+<form method="post" enctype="multipart/form-data">
+    <div>
+        <label>PDF файл:</label>
+        <input type="file" name="file" accept=".pdf" required>
+    </div>
+    <div>
+        <label>Название *:</label>
+        <input type="text" name="title" required>
+    </div>
+    <div>
+        <label>Авторы:</label>
+        <input type="text" name="authors">
+    </div>
+    <div>
+        <label>Год:</label>
+        <input type="number" name="year" min="1900" max="2099">
+    </div>
+    <div>
+        <label>Категория:</label>
+        <input type="text" name="category">
+    </div>
+    <button type="submit">Загрузить</button>
+</form>
+{% endblock %}

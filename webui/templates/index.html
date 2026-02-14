@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Поиск по документам</h2>
+<div class="search-box">
+    <input type="text"
+           name="q"
+           placeholder="Введите запрос..."
+           hx-get="/search"
+           hx-trigger="keyup changed delay:500ms"
+           hx-target="#results"
+           hx-indicator="#spinner"
+           hx-vals='js:{type: document.getElementById("search-type").value}'>
+    <select id="search-type" name="type" hx-get="/search" hx-target="#results" hx-trigger="change">
+        <option value="text">Полнотекстовый</option>
+        <option value="vector">Семантический</option>
+    </select>
+    <div id="spinner" class="htmx-indicator">Ищем...</div>
+</div>
+<div id="results"></div>
+
+<hr>
+
+<h3>Недавно загруженные документы</h3>
+{% if documents %}
+    <div class="document-list">
+        {% for doc in documents %}
+        <div class="document-card">
+            <h4><a href="{{ url_for('document', doc_id=doc.id) }}">{{ doc.title }}</a></h4>
+            <p><strong>Авторы:</strong> {{ doc.authors or '—' }}</p>
+            <p><strong>Год:</strong> {{ doc.year or '—' }} | <strong>Категория:</strong> {{ doc.category or '—' }}</p>
+            <p><small>Загружен: {{ doc.created_at[:10] if doc.created_at else '' }}</small></p>
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <p>Пока нет загруженных документов. <a href="{{ url_for('upload') }}">Загрузите первый PDF</a>.</p>
+{% endif %}
+
+<hr>
+<a href="{{ url_for('upload') }}" class="button">Загрузить новый PDF</a>
+{% endblock %}

@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/AndB0ndar/doc-archive/internal/config"
-	"github.com/AndB0ndar/doc-archive/internal/repository"
 	"github.com/AndB0ndar/doc-archive/internal/models"
+	"github.com/AndB0ndar/doc-archive/internal/repository"
 )
 
 type SearchService struct {

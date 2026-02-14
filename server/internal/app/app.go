@@ -53,7 +53,7 @@ func (a *App) Run() error {
 		a.config, chunkRepo, embedderService,
 	)
 
-	handler := server.NewRouter(docService, searchService)
+	handler := server.NewRouter(docRepo, docService, searchService)
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", a.config.Port),

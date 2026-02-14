@@ -1,28 +1,91 @@
 services:
   postgres:
     image: pgvector/pgvector:pg15
+    container_name: doc-postgres
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: pass
-      POSTGRES_DB: docdb
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pass}
+      POSTGRES_DB: ${POSTGRES_DB:-docdb}
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql
     command: postgres -c shared_preload_libraries=vector
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d docdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - doc-net
 
   embedder:
     build: ./embedder
+    container_name: doc-embedder
+    environment:
+      MODEL_NAME: all-MiniLM-L6-v2
+      MAX_TEXT_LENGTH: 5000
     ports:
       - "5001:5001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - doc-net
+
+  api:
+    build: ./server
+    container_name: doc-api
     environment:
-      - MODEL_NAME=all-MiniLM-L6-v2
-      - MAX_TEXT_LENGTH=5000
-    deploy:
-      resources:
-        limits:
-          memory: 1G
+      DATABASE_URL: postgres://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-pass}@postgres:5432/${POSTGRES_DB:-docdb}?sslmode=disable
+      EMBEDDER_URL: http://embedder:5001
+      UPLOAD_DIR: /app/uploads
+      PORT: 8080
+      ENV: production
+    ports:
+      - "8080:8080"
+    volumes:
+      #- uploads:/app/uploads
+      - ./uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      embedder:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - doc-net
+
+  webui:
+    build: ./webui
+    container_name: doc-webui
+    environment:
+      GO_API_BASE_URL: http://api:8080
+      UPLOAD_DIR: /app/uploads
+    ports:
+      - "5005:5000"
+    volumes:
+      #- uploads:/app/uploads
+      - ./uploads:/app/uploads
+    depends_on:
+      api:
+        condition: service_started
+    networks:
+      - doc-net
+
 
 volumes:
   pgdata:
+  #uploads:
+
+networks:
+  doc-net:
+    driver: bridge
 

@@ -49,8 +49,8 @@ func (c *Embedder) Embed(text string) ([]float32, error) {
 	}
 
 	var response struct {
-        Embeddings [][]float32 `json:"embeddings"`
-    }
+		Embeddings [][]float32 `json:"embeddings"`
+	}
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
 		return nil, fmt.Errorf("decode response: %w", err)
 	}
