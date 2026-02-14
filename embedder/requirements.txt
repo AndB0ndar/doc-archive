@@ -1,3 +1,4 @@
-Flask==3.1.2
-sentence-transformers==5.2.2
-torch==2.10.0
+fastapi
+uvicorn[standard]
+sentence-transformers
+pydantic-settings
