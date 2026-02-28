@@ -8,13 +8,12 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY ./app ./app
 
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PORT=5001
+ENV PORT=5001
+ENV EMBED_MODEL_NAME=multi-qa-MiniLM-L6-cos-v1
+ENV MAX_TEXT_LENGTH=5000
 
 EXPOSE $PORT
 
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "5001"]
-
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "5001"]

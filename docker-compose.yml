@@ -1,3 +1,5 @@
+name: doc-archive
+
 services:
   postgres:
     image: pgvector/pgvector:pg15
@@ -23,7 +25,8 @@ services:
     build: ./embedder
     container_name: doc-embedder
     environment:
-      MODEL_NAME: all-MiniLM-L6-v2
+      EMBED_MODEL_NAME: all-MiniLM-L6-v2
+      RERANK_MODEL_NAME: cross-encoder/ms-marco-MiniLM-L-6-v2
       MAX_TEXT_LENGTH: 5000
     ports:
       - "5001:5001"
@@ -48,8 +51,7 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      #- uploads:/app/uploads
-      - ./uploads:/app/uploads
+      - uploads:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -74,27 +76,17 @@ services:
     ports:
       - "5005:5000"
     volumes:
-      #- uploads:/app/uploads
-      - ./uploads:/app/uploads
+      - uploads:/app/uploads
     depends_on:
       api:
         condition: service_started
     networks:
       - doc-net
 
-  #redis:
-    #image: redis:7-alpine
-    #ports:
-      #- "6379:6379"
-    #volumes:
-      #- redis_data:/data
-    #restart: unless-stopped
-
 
 volumes:
   pgdata:
-  #redis_data:
-  #uploads:
+  uploads:
 
 networks:
   doc-net:

@@ -1,4 +1,8 @@
 fastapi
 uvicorn[standard]
+python-multipart
 sentence-transformers
-pydantic-settings
+torch
+transformers
+pydantic
+pydantic_settings
