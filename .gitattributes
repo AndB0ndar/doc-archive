@@ -1,2 +1,1 @@
-webui/static/build/* linguist-vendored
-webui/static/web/* linguist-vendored
+webui/static/pdfjs/* linguist-vendored
