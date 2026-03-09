@@ -16,9 +16,14 @@ type Config struct {
 	Database           DatabaseConfig
 	SearchDefaultLimit int
 	SearchMaxLimit     int
-	ChunkSize          int
-	ChunkOverlap       int
+	Chunks             ChunkConfig
 	JWTSecret          string
+}
+
+type ChunkConfig struct {
+	Size       int
+	Overlap    int
+	Separators []string
 }
 
 type DatabaseConfig struct {
@@ -47,8 +52,11 @@ func Load() (*Config, error) {
 		JWTSecret:          getEnv("SECRET_KEY", "default-secret-change-me"),
 		SearchDefaultLimit: 20,
 		SearchMaxLimit:     100,
-		ChunkSize:          2000,
-		ChunkOverlap:       200,
+		Chunks: ChunkConfig{
+			Size:       500,
+			Overlap:    1,
+			Separators: []string{"\n\n", "\n", ". ", "? ", "! "},
+		},
 		Database: DatabaseConfig{
 			URL:               getEnv("DATABASE_URL", "postgres://user:pass@localhost:5432/docdb?sslmode=disable"),
 			MigrationsPath:    getEnv("MIGRATIONS_PATH", "migrations"),

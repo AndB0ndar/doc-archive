@@ -129,9 +129,12 @@ func (s *DocumentService) processDocument(docID int, filePath string) {
 		return
 	}
 
-	chunkSize := s.cfg.ChunkSize
-	overlap := s.cfg.ChunkOverlap
-	chunks := Chunk(text, chunkSize, overlap)
+	splitter := &TextSplitter{
+		ChunkSize:  s.cfg.Chunks.Size,
+		Overlap:    s.cfg.Chunks.Overlap,
+		Separators: s.cfg.Chunks.Separators,
+	}
+	chunks := splitter.SplitText(text)
 	slog.Info("text chunked", "id", docID, "chunks", len(chunks))
 
 	for idx, chunkText := range chunks {
