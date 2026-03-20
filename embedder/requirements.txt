@@ -1,8 +1,8 @@
-fastapi
-uvicorn[standard]
-python-multipart
-sentence-transformers
-torch
-transformers
-pydantic
+fastapi==0.134.0
+uvicorn==0.41.0
+python-multipart==0.0.22
+sentence-transformers==5.2.3
+torch==2.10.0
+transformers==5.2.0
+pydantic==2.12.5
 pydantic_settings

@@ -15,6 +15,8 @@ type Config struct {
 	EmbedderURL        string
 	RerankerURL        string
 	RerankerEnabled    bool
+	ReaderURL          string
+	ReaderEnabled      bool
 	Database           DatabaseConfig
 	SearchDefaultLimit int
 	SearchMaxLimit     int
@@ -52,6 +54,8 @@ func Load() (*Config, error) {
 		EmbedderURL:        getEnv("EMBEDDER_URL", "http://localhost:5001"),
 		RerankerURL:        getEnv("RERANKER_URL", "http://localhost:5001"),
 		RerankerEnabled:    getEnv("RERANKER_ENABLED", "1") == "1",
+		ReaderURL:          getEnv("READER_URL", "http://embedder:5001"),
+		ReaderEnabled:      getEnv("READER_ENABLED", "1") == "1",
 		Env:                getEnv("ENV", "development"),
 		JWTSecret:          getEnv("SECRET_KEY", "default-secret-change-me"),
 		SearchDefaultLimit: 20,

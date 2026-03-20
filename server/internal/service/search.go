@@ -15,6 +15,7 @@ type SearchService struct {
 	chunkRepo      *repository.ChunkRepository
 	embedderClient *Embedder
 	rerankerClient *Reranker
+	readerClient   *Reader
 }
 
 func NewSearchService(
@@ -22,12 +23,14 @@ func NewSearchService(
 	repo *repository.ChunkRepository,
 	embedderClient *Embedder,
 	rerankerClient *Reranker,
+	readerClient *Reader,
 ) *SearchService {
 	return &SearchService{
 		cfg:            cfg,
 		chunkRepo:      repo,
 		embedderClient: embedderClient,
 		rerankerClient: rerankerClient,
+		readerClient:   readerClient,
 	}
 }
 
@@ -77,13 +80,13 @@ func (s *SearchService) Search(
 
 	switch req.Type {
 	case "", "text":
-		results, err = s.chunkRepo.FullTextSearchChunks(req.Query, req.UserID, req.Limit*2)
+		results, err = s.chunkRepo.FullTextSearchChunks(req.Query, req.UserID, req.Limit*3)
 	case "vector", "semantic":
 		embedding, err := s.embedderClient.Embed(req.Query)
 		if err != nil {
 			return nil, fmt.Errorf("%w: %v", ErrEmbedding, err)
 		}
-		results, err = s.chunkRepo.SemanticSearchChunks(embedding, req.UserID, req.Limit*2)
+		results, err = s.chunkRepo.SemanticSearchChunks(embedding, req.UserID, req.Limit*3)
 	default:
 		return nil, ErrInvalidType
 	}
@@ -94,10 +97,19 @@ func (s *SearchService) Search(
 	if s.cfg.RerankerEnabled && len(results) > 0 {
 		results = s.applyReranking(req, results)
 	} else {
+		if len(results) > req.Limit*2 {
+			results = results[:req.Limit*2]
+		}
+	}
+
+	if s.cfg.ReaderEnabled && len(results) > 0 {
+		results = s.applyReader(req, results)
+	} else {
 		if len(results) > req.Limit {
 			results = results[:req.Limit]
 		}
 	}
+
 	return results, err
 }
 
@@ -116,15 +128,15 @@ func (s *SearchService) applyReranking(
 
 	scores, err := s.rerankerClient.Rerank(req.Query, texts)
 	if err != nil {
-		if len(results) > req.Limit {
-			return results[:req.Limit]
+		if len(results) > req.Limit*2 {
+			return results[:req.Limit*2]
 		}
 		return results
 	}
 
 	if len(scores) != len(results) {
-		if len(results) > req.Limit {
-			return results[:req.Limit]
+		if len(results) > req.Limit*2 {
+			return results[:req.Limit*2]
 		}
 		return results
 	}
@@ -137,8 +149,30 @@ func (s *SearchService) applyReranking(
 		return results[i].Similarity > results[j].Similarity
 	})
 
+	if len(results) > req.Limit*2 {
+		results = results[:req.Limit*2]
+	}
+	return results
+}
+
+func (s *SearchService) applyReader(
+	req SearchRequest,
+	results []models.ChunkSearchResponse,
+) []models.ChunkSearchResponse {
+	readerTopK := 3
+	if readerTopK > len(results) {
+		readerTopK = len(results)
+	}
+	for i := 0; i < readerTopK; i++ {
+		ans, err := s.readerClient.ExtractAnswer(req.Query, results[i].Content)
+		if err != nil {
+			continue
+		}
+		results[i].Answer = &ans.Answer
+		results[i].AnswerConfidence = &ans.Confidence
+	}
 	if len(results) > req.Limit {
-		results = results[:req.Limit]
+		return results[:req.Limit]
 	}
 	return results
 }

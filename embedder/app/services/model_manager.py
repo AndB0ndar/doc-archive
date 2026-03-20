@@ -1,3 +1,4 @@
+import os
 import logging
 
 from transformers import pipeline
@@ -38,13 +39,15 @@ def load_models(settings):
         logger.info("Reranker loaded successfully.")
 
     if settings.reader_model_name:
-        logger.info(f"Reader model: {settings.reader_model_name}")
-        _reader_pipeline = pipeline(
-            "document-question-answering",
-            model=settings.reader_model_name,
-            tokenizer=settings.reader_model_name
-        )
-        logger.info("Reader loaded successfully.")
+        if os.environ.get("HF_TOKEN"):
+            logger.info(f"Reader model: {settings.reader_model_name}")
+            _reader_pipeline = pipeline(
+                "question-answering",
+                model=settings.reader_model_name
+            )
+            logger.info("Reader loaded successfully.")
+        else:
+            logger.warning(f"Not set HF_TOKEN. Can't install reader model!")
 
 
 def unload_models():
