@@ -40,7 +40,7 @@ def load_models(settings):
     if settings.reader_model_name:
         logger.info(f"Reader model: {settings.reader_model_name}")
         _reader_pipeline = pipeline(
-            "question-answering",
+            "document-question-answering",
             model=settings.reader_model_name,
             tokenizer=settings.reader_model_name
         )

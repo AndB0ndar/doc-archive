@@ -27,6 +27,7 @@ services:
     environment:
       EMBED_MODEL_NAME: all-MiniLM-L6-v2
       RERANK_MODEL_NAME: cross-encoder/ms-marco-MiniLM-L-6-v2
+      READER_MODEL_NAME: distilbert-base-cased-distilled-squad
       MAX_TEXT_LENGTH: 5000
     ports:
       - "5001:5001"
@@ -44,6 +45,7 @@ services:
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-pass}@postgres:5432/${POSTGRES_DB:-docdb}?sslmode=disable
       EMBEDDER_URL: http://embedder:5001
+      RERANKER_URL: http://embedder:5001
       UPLOAD_DIR: /app/uploads
       PORT: 8080
       ENV: production

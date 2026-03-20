@@ -13,6 +13,8 @@ type Config struct {
 	Env                string
 	UploadDir          string
 	EmbedderURL        string
+	RerankerURL        string
+	RerankerEnabled    bool
 	Database           DatabaseConfig
 	SearchDefaultLimit int
 	SearchMaxLimit     int
@@ -48,6 +50,8 @@ func Load() (*Config, error) {
 		Port:               port,
 		UploadDir:          getEnv("UPLOAD_DIR", "uploads"),
 		EmbedderURL:        getEnv("EMBEDDER_URL", "http://localhost:5001"),
+		RerankerURL:        getEnv("RERANKER_URL", "http://localhost:5001"),
+		RerankerEnabled:    getEnv("RERANKER_ENABLED", "1") == "1",
 		Env:                getEnv("ENV", "development"),
 		JWTSecret:          getEnv("SECRET_KEY", "default-secret-change-me"),
 		SearchDefaultLimit: 20,

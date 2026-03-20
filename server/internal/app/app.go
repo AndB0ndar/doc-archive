@@ -53,11 +53,12 @@ func (a *App) Run() error {
 
 	// Service
 	embedderService := service.NewEmbedder(a.config)
+	rerankerClient := service.NewReranker(a.config)
 	docService := service.NewDocumentService(
 		a.config, docRepo, chunkRepo, embedderService,
 	)
 	searchService := service.NewSearchService(
-		a.config, chunkRepo, embedderService,
+		a.config, chunkRepo, embedderService, rerankerClient,
 	)
 
 	handler := server.NewRouter(userRepo, docRepo, docService, searchService)

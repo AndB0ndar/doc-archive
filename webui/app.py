@@ -115,7 +115,6 @@ def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'token' not in session:
-            flash('Пожалуйста, войдите в систему')
             return redirect(url_for('login'))
         return f(*args, **kwargs)
     return decorated_function
@@ -226,7 +225,6 @@ def register():
             resp = requests.post(f"{app.config['GO_API_BASE_URL']}/register", json=data)
             if resp.status_code == 200:
                 logger.info("Registration is successful, log in")
-                flash("Registration is successful, log in")
                 return redirect(url_for('login'))
             else:
                 logger.error(f"Register error: {resp.text}")
