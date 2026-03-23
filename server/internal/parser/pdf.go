@@ -1,4 +1,4 @@
-package service
+package parser
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 	"github.com/ledongthuc/pdf"
 )
 
-func ExtractText(filePath string) (string, error) {
+func ExtractFromPDF(filePath string) (string, error) {
 	f, r, err := pdf.Open(filePath)
 	if err != nil {
 		return "", fmt.Errorf("open pdf: %w", err)

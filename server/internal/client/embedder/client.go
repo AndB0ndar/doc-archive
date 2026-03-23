@@ -1,4 +1,4 @@
-package service
+package embedder
 
 import (
 	"bytes"
@@ -8,24 +8,28 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/AndB0ndar/doc-archive/internal/config"
+	"github.com/AndB0ndar/doc-archive/internal/domain"
 )
 
-type Embedder struct {
+type client struct {
 	URL        string
 	httpClient *http.Client
 }
 
-func NewEmbedder(cfg *config.Config) *Embedder {
-	return &Embedder{
-		URL: cfg.EmbedderURL,
+func New(EmbedderURL string) domain.EmbedderClient {
+	return &client{
+		URL: EmbedderURL,
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
 		},
 	}
 }
 
-func (c *Embedder) Embed(text string) ([]float32, error) {
+type embedderResponse struct {
+	Embeddings [][]float32 `json:"embeddings"`
+}
+
+func (c *client) Embed(text string) (*domain.EmbedResult, error) {
 	reqBody, err := json.Marshal(map[string][]string{
 		"texts": {text},
 	})
@@ -48,15 +52,12 @@ func (c *Embedder) Embed(text string) ([]float32, error) {
 		)
 	}
 
-	var response struct {
-		Embeddings [][]float32 `json:"embeddings"`
-	}
+	var response embedderResponse
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
 		return nil, fmt.Errorf("decode response: %w", err)
 	}
-
 	if len(response.Embeddings) == 0 {
 		return nil, fmt.Errorf("no embedding returned")
 	}
-	return response.Embeddings[0], nil
+	return &domain.EmbedResult{Embeddings: response.Embeddings[0]}, nil
 }

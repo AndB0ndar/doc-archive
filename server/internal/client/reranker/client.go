@@ -1,4 +1,4 @@
-package service
+package reranker
 
 import (
 	"bytes"
@@ -8,27 +8,33 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/AndB0ndar/doc-archive/internal/config"
+	"github.com/AndB0ndar/doc-archive/internal/domain"
 )
 
-type Reranker struct {
+type client struct {
 	URL        string
 	httpClient *http.Client
 }
 
-func NewReranker(cfg *config.Config) *Reranker {
-	return &Reranker{
-		URL: cfg.RerankerURL,
+func New(RerankerURL string) domain.RerankerClient {
+	return &client{
+		URL: RerankerURL,
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
 		},
 	}
 }
 
-func (c *Reranker) Rerank(query string, texts []string) ([]float32, error) {
+type rerankResponse struct {
+	Scores []float32 `json:"embeddings"`
+}
+
+func (c *client) Rerank(
+	query string, passages []string,
+) (*domain.RerankResult, error) {
 	reqBody, err := json.Marshal(map[string]interface{}{
 		"query": query,
-		"texts": texts,
+		"texts": passages,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("marshal request: %w", err)
@@ -49,12 +55,10 @@ func (c *Reranker) Rerank(query string, texts []string) ([]float32, error) {
 		)
 	}
 
-	var response struct {
-		Scores []float32 `json:"embeddings"`
-	}
+	var response rerankResponse
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
 		return nil, fmt.Errorf("decode response: %w", err)
 	}
 
-	return response.Scores, nil
+	return &domain.RerankResult{Scores: response.Scores}, nil
 }

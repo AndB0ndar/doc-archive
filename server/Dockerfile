@@ -20,10 +20,6 @@ RUN apk --no-cache add ca-certificates curl
 WORKDIR /app
 
 COPY --from=builder /app/doc-search .
-COPY --from=builder /app/migrations ./migrations
-
-# Create empty folder uploads (will be overwritten by volume)
-RUN mkdir -p uploads
 
 EXPOSE 8080
 

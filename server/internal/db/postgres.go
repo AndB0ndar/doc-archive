@@ -2,18 +2,12 @@ package db
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"time"
 
-	"github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/source/file" // for read migrations from files
-	_ "github.com/pgvector/pgvector-go/pgx"              // registers pgvector codecs in pgx
-
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/jackc/pgx/v5/stdlib"
+	_ "github.com/pgvector/pgvector-go/pgx" // registers pgvector codecs in pgx
 
 	"github.com/AndB0ndar/doc-archive/internal/config"
 )
@@ -44,29 +38,4 @@ func NewPool(cfg config.DatabaseConfig) (*pgxpool.Pool, error) {
 
 	slog.Info("connected to PostgreSQL")
 	return pool, nil
-}
-
-func RunMigrations(pool *pgxpool.Pool, cfg config.DatabaseConfig) error {
-	sqlDB := stdlib.OpenDBFromPool(pool)
-	defer sqlDB.Close()
-
-	driver, err := postgres.WithInstance(sqlDB, &postgres.Config{})
-	if err != nil {
-		return fmt.Errorf("create migrate driver: %w", err)
-	}
-
-	m, err := migrate.NewWithDatabaseInstance(
-		"file://"+cfg.MigrationsPath,
-		"postgres", driver,
-	)
-	if err != nil {
-		return fmt.Errorf("create migrate instance: %w", err)
-	}
-
-	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		return fmt.Errorf("apply migrations: %w", err)
-	}
-
-	slog.Info("database migrations applied successfully")
-	return nil
 }

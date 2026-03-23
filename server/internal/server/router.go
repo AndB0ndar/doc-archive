@@ -1,7 +1,6 @@
 package server
 
 import (
-	"log/slog"
 	"net/http"
 	"time"
 
@@ -13,8 +12,6 @@ import (
 
 	"github.com/AndB0ndar/doc-archive/internal/handlers"
 	mdwr "github.com/AndB0ndar/doc-archive/internal/middleware"
-	"github.com/AndB0ndar/doc-archive/internal/repository"
-	"github.com/AndB0ndar/doc-archive/internal/service"
 )
 
 // @title           PDF Search API
@@ -36,10 +33,11 @@ import (
 // @in header
 // @name Authorization
 func NewRouter(
-	userRepo *repository.UserRepository,
-	docRepo *repository.DocumentRepository,
-	docService *service.DocumentService,
-	searchService *service.SearchService,
+	authHandler *handlers.AuthHandler,
+	uploadHandler *handlers.UploadHandler,
+	searchHandler *handlers.SearchHandler,
+	docHandler *handlers.DocumentHandler,
+	JWTSecret string,
 ) http.Handler {
 	r := chi.NewRouter()
 
@@ -48,13 +46,9 @@ func NewRouter(
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.StripSlashes)
 	r.Use(middleware.Timeout(60 * time.Second))
+	r.Use(middleware.Logger)
 
-	r.Use(mdwr.Logger(slog.Default()))
-
-	authHandler := handlers.NewAuthHandler(userRepo)
-	uploadHandler := handlers.NewUploadHandler(docService)
-	searchAPIHandler := handlers.NewSearchHandler(searchService)
-	docHandler := handlers.NewDocumentHandler(docRepo) // FIXME
+	//r.Use(mdwr.Logger(slog.Default()))
 
 	r.Get("/health", handlers.Health)
 
@@ -62,11 +56,11 @@ func NewRouter(
 	r.Post("/login", authHandler.Login)
 
 	r.Group(func(r chi.Router) {
-		r.Use(mdwr.AuthMiddleware)
+		r.Use(mdwr.AuthMiddleware(JWTSecret))
 
 		r.Post("/upload", uploadHandler.ServeHTTP)
 
-		r.Get("/search", searchAPIHandler.ServeHTTP)
+		r.Get("/search", searchHandler.Search)
 
 		r.Route("/documents", func(r chi.Router) {
 			r.Get("/", docHandler.ListDocuments)

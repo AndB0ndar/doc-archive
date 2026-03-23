@@ -188,7 +188,7 @@ def login():
         except:
             logger.error("Server connection error")
             flash("Server connection error")
-    return render_template('login.html')
+    return render_template('auth/login.html')
 
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -223,7 +223,7 @@ def register():
         data = {'email': request.form['email'], 'password': request.form['password']}
         try:
             resp = requests.post(f"{app.config['GO_API_BASE_URL']}/register", json=data)
-            if resp.status_code == 200:
+            if resp.status_code == 201:
                 logger.info("Registration is successful, log in")
                 return redirect(url_for('login'))
             else:
@@ -232,7 +232,7 @@ def register():
         except:
             logger.error("Server connection error")
             flash("Server connection error")
-    return render_template('register.html')
+    return render_template('auth/register.html')
 
 
 @app.route('/logout')
@@ -265,7 +265,7 @@ def index():
     docs, err = call_go_api_auth('/documents')
     if err:
         docs = []
-    return render_template('index.html', documents=docs)
+    return render_template('pages/index.html', documents=docs)
 
 
 @app.route('/upload', methods=['GET', 'POST'])
@@ -314,7 +314,7 @@ def upload():
         description: Backend API error
     """
     if request.method == 'GET':
-        return render_template('upload.html')
+        return render_template('pages/upload.html')
 
     # POST: process file upload
     file = request.files.get('file')
@@ -330,16 +330,18 @@ def upload():
     }
     files = {'file': (file.filename, file.stream, file.mimetype)}
 
-    result, err = call_go_api_auth('/upload', method='POST', data=data, files=files)
+    result, err = call_go_api_auth(
+        '/upload', method='POST', data=data, files=files
+    )
     if err:
         logger.error(f"Upload failed: {err}")
         return f"Upload failed: {err}", 500
 
     # On success, redirect to the document view page
-    return redirect(url_for('document', doc_id=result['id']))
+    return redirect(url_for('document', doc_id=result['document_id']))
 
 
-@app.route('/documents/<int:doc_id>')
+@app.route('/documents/<uuid:doc_id>')
 @login_required
 def document(doc_id):
     """
@@ -362,10 +364,10 @@ def document(doc_id):
     doc, err = call_go_api_auth(f'/documents/{doc_id}')
     if err or doc is None:
         abort(404)
-    return render_template('document.html', doc=doc)
+    return render_template('pages/document.html', doc=doc)
 
 
-@app.route('/documents/<int:doc_id>/delete', methods=['DELETE'])
+@app.route('/documents/<uuid:doc_id>/delete', methods=['DELETE'])
 @login_required
 def delete_document(doc_id):
     """
@@ -463,12 +465,20 @@ def search():
     if not query:
         return '', 400
 
-    results, err = call_go_api_auth('/search', params={'q': query, 'type': search_type})
+    results, err = call_go_api_auth(
+        '/search', params={'q': query, 'type': search_type}
+    )
+    logger.info(f"="*10)
+    logger.info(f"{results}")
+    logger.info(f"{type(results)}")
+    logger.info(f"="*10)
     if err:
         logger.error(f"Search error: {err}")
         return f"Search error: {err}", 500
 
-    return render_template('search_results.html', results=results)
+    return render_template(
+        'schema/search_results.html', results=results["results"]
+    )
 
 
 # ----------------------------------------------------------------------
@@ -477,13 +487,13 @@ def search():
 @app.errorhandler(404)
 def page_not_found(e):
     """Custom 404 page."""
-    return render_template('404.html'), 404
+    return render_template('errors/404.html'), 404
 
 
 @app.errorhandler(500)
 def internal_server_error(e):
     """Custom 500 page."""
-    return render_template('500.html'), 500
+    return render_template('errors/500.html'), 500
 
 
 if __name__ == '__main__':

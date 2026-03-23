@@ -7,18 +7,24 @@ import (
 	"net/http"
 	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/AndB0ndar/doc-archive/internal/domain"
 	"github.com/AndB0ndar/doc-archive/internal/middleware"
-	"github.com/AndB0ndar/doc-archive/internal/service"
+	"github.com/AndB0ndar/doc-archive/internal/models"
 )
 
 type UploadHandler struct {
-	service *service.DocumentService
+	docService domain.DocumentService
+	logger     *slog.Logger
 }
 
-func NewUploadHandler(service *service.DocumentService) *UploadHandler {
+func NewUploadHandler(
+	docService domain.DocumentService, logger *slog.Logger,
+) *UploadHandler {
 	return &UploadHandler{
-		service: service,
+		docService: docService,
+		logger:     logger,
 	}
 }
 
@@ -31,80 +37,142 @@ func NewUploadHandler(service *service.DocumentService) *UploadHandler {
 // @Param        file formData file true "PDF-файл"
 // @Param        title formData string true "Название документа"
 // @Param        authors formData string false "Авторы"
-// @Param        year formData int false "Год публикации"
+// @Param        year formData string false "Год публикации"
 // @Param        category formData string false "Категория"
-// @Success      201  {object}  map[string]interface{}
+// @Success      201  {object}  models.UploadResponse
 // @Failure      400  {object}  map[string]string
 // @Failure      401  {object}  map[string]string
 // @Security     BearerAuth
 // @Router       /upload [post]
 func (h *UploadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	userID, ok := r.Context().Value(middleware.UserIDKey).(int)
+	start := time.Now()
+	logger := h.logger.With(
+		slog.String("method", r.Method),
+		slog.String("path", r.URL.Path),
+	)
+	logger.Debug("Upload request started")
+
+	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
 	if !ok {
+		logger.Warn("Upload: unauthorized - userID missing in context")
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
+	logger = logger.With(slog.String("user_id", userID))
 
 	// Request size limit (50 MB)
+	logger.Debug("Upload: applying max bytes reader (50MB)")
 	r.Body = http.MaxBytesReader(w, r.Body, 50<<20)
 
 	// Parsing multipart/form-data
+	logger.Debug("Upload: parsing multipart form (32MB)")
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
-		slog.Error("failed to parse multipart form", "error", err)
+		logger.Error(
+			"Upload: failed to parse multipart form", slog.Any("error", err),
+		)
 		http.Error(w, "Failed to parse form", http.StatusBadRequest)
 		return
 	}
+	logger.Debug("Upload: multipart form parsed successfully")
 
 	// Get file
+	logger.Debug("Upload: retrieving file from form")
 	file, header, err := r.FormFile("file")
 	if err != nil {
-		slog.Error("failed to get file from form", "error", err)
+		logger.Error(
+			"Upload: failed to get file from form", slog.Any("error", err),
+		)
 		http.Error(w, "File is required", http.StatusBadRequest)
 		return
 	}
 	defer file.Close()
+	logger = logger.With(
+		slog.String("filename", header.Filename),
+		slog.Int64("size", header.Size),
+	)
+	logger.Debug("Upload: file retrieved")
 
 	// Check extension
-	if ext := strings.ToLower(filepath.Ext(header.Filename)); ext != ".pdf" {
+	ext := strings.ToLower(filepath.Ext(header.Filename))
+	logger.Debug(
+		"Upload: checking file extension", slog.String("extension", ext),
+	)
+	if ext != ".pdf" {
+		logger.Warn(
+			"Upload: invalid file extension", slog.String("extension", ext),
+		)
 		http.Error(w, "Only PDF files are allowed", http.StatusBadRequest)
 		return
 	}
 
-	// Check MIME‑type (read first 512 byte)
+	// Check MIME‑type (read first 512 bytes)
+	logger.Debug("Upload: reading file header for MIME detection")
 	buf := make([]byte, 512)
 	if _, err := file.Read(buf); err != nil && err != io.EOF {
-		slog.Error("failed to read file header", "error", err)
+		logger.Error(
+			"Upload: failed to read file header", slog.Any("error", err),
+		)
 		http.Error(w, "Failed to read file", http.StatusInternalServerError)
 		return
 	}
 	file.Seek(0, io.SeekStart)
 	mimeType := http.DetectContentType(buf)
+	logger.Debug(
+		"Upload: detected MIME type", slog.String("mime_type", mimeType),
+	)
 	if !strings.Contains(mimeType, "application/pdf") && !strings.Contains(mimeType, "application/x-pdf") {
+		logger.Warn(
+			"Upload: file is not a valid PDF",
+			slog.String("mime_type", mimeType),
+		)
 		http.Error(w, "File is not a valid PDF", http.StatusBadRequest)
 		return
 	}
 
-	params := &service.UploadParams{
-		File:     file,
-		Header:   header,
-		Title:    strings.TrimSpace(r.FormValue("title")),
-		Authors:  strings.TrimSpace(r.FormValue("authors")),
-		Year:     strings.TrimSpace(r.FormValue("year")),
-		Category: strings.TrimSpace(r.FormValue("category")),
-		UserID:   userID,
-	}
+	// Extract metadata
+	title := strings.TrimSpace(r.FormValue("title"))
+	authors := strings.TrimSpace(r.FormValue("authors"))
+	year := strings.TrimSpace(r.FormValue("year"))
+	category := strings.TrimSpace(r.FormValue("category"))
+	logger.Debug("Upload: extracted metadata",
+		slog.String("title", title),
+		slog.String("authors", authors),
+		slog.String("year", year),
+		slog.String("category", category),
+	)
 
-	id, err := h.service.Upload(params)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	if title == "" {
+		logger.Warn("Upload: title is empty")
+		http.Error(w, "Title is required", http.StatusBadRequest)
 		return
 	}
 
+	logger.Debug("Upload: calling docService.Upload")
+	docID, err := h.docService.Upload(
+		r.Context(), file, title, authors, year, category, userID,
+	)
+	if err != nil {
+		logger.Error("Upload: upload failed", slog.Any("error", err))
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	logger = logger.With(slog.String("document_id", docID))
+	logger.Debug("Upload: document created successfully")
+
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"id":      id,
-		"message": "Document uploaded successfully. Processing started.",
-		"status":  "pending",
-	})
+	logger.Debug("Upload: encoding response")
+	if err := json.NewEncoder(w).Encode(models.UploadResponse{
+		DocumentID: docID,
+		Status:     "pending",
+	}); err != nil {
+		logger.Error(
+			"Upload: failed to encode response", slog.Any("error", err),
+		)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	logger.Info(
+		"Upload: completed", slog.Duration("duration", time.Since(start)),
+	)
 }

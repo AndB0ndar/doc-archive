@@ -10,10 +10,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY ./app ./app
 
-ENV PORT=5001
+ENV PORT=5000
 ENV EMBED_MODEL_NAME=multi-qa-MiniLM-L6-cos-v1
 ENV MAX_TEXT_LENGTH=5000
 
 EXPOSE $PORT
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "5001"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "5000"]

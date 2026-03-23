@@ -3,20 +3,27 @@ package app
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"github.com/AndB0ndar/doc-archive/internal/auth"
 	"github.com/AndB0ndar/doc-archive/internal/config"
 	"github.com/AndB0ndar/doc-archive/internal/db"
+	"github.com/AndB0ndar/doc-archive/internal/handlers"
 	"github.com/AndB0ndar/doc-archive/internal/logger"
 	"github.com/AndB0ndar/doc-archive/internal/repository"
 	"github.com/AndB0ndar/doc-archive/internal/server"
-	"github.com/AndB0ndar/doc-archive/internal/service"
+
+	"github.com/AndB0ndar/doc-archive/internal/client/embedder"
+	"github.com/AndB0ndar/doc-archive/internal/client/reader"
+	"github.com/AndB0ndar/doc-archive/internal/client/reranker"
+
+	"github.com/AndB0ndar/doc-archive/internal/service/auth"
+	"github.com/AndB0ndar/doc-archive/internal/service/chunker"
+	"github.com/AndB0ndar/doc-archive/internal/service/document"
+	"github.com/AndB0ndar/doc-archive/internal/service/search"
 )
 
 type App struct {
@@ -28,12 +35,11 @@ func New(cfg *config.Config) *App {
 }
 
 func (a *App) Run() error {
-	logger.Setup(a.config.Env)
-	slog.Info("config loaded", "port", a.config.Port, "env", a.config.Env)
+	log := logger.New(a.config.Env)
+	log.Info("config loaded", "port", a.config.Port, "env", a.config.Env)
 
-	auth.SetJWTSecret(a.config.JWTSecret)
 	if a.config.JWTSecret == "default-secret-change-me" && a.config.Env == "production" {
-		slog.Warn("JWT_SECRET is set to default value, please change it in production")
+		log.Warn("JWT_SECRET is set to default value, please change it in production")
 	}
 
 	// DB
@@ -42,27 +48,48 @@ func (a *App) Run() error {
 		return fmt.Errorf("failed to connect to database: %w", err)
 	}
 	defer pool.Close()
-	if err := db.RunMigrations(pool, a.config.Database); err != nil {
-		return fmt.Errorf("failed to run migrations: %w", err)
-	}
 
 	// Repositories
 	docRepo := repository.NewDocumentRepository(pool)
 	chunkRepo := repository.NewChunkRepository(pool)
 	userRepo := repository.NewUserRepository(pool)
 
+	// Clients
+	embedderClient := embedder.New(a.config.EmbedderURL)
+	rerankerClient := reranker.New(a.config.RerankerURL)
+	readerClient := reader.New(a.config.ReaderURL)
+
 	// Service
-	embedderService := service.NewEmbedder(a.config)
-	rerankerClient := service.NewReranker(a.config)
-	readerClient := service.NewReader(a.config)
-	docService := service.NewDocumentService(
-		a.config, docRepo, chunkRepo, embedderService,
+	authService := auth.New(
+		userRepo,
+		a.config.JWTSecret, time.Duration(a.config.JWTExpiry)*time.Hour,
 	)
-	searchService := service.NewSearchService(
-		a.config, chunkRepo, embedderService, rerankerClient, readerClient,
+	chunkerSvc := chunker.New(
+		a.config.Chunk.Size,
+		a.config.Chunk.Overlap,
+		a.config.Chunk.Separators,
+		a.config.Chunk.SplitBySentences,
+	)
+	docService := document.New(
+		docRepo, chunkRepo, embedderClient, chunkerSvc,
+		a.config.UploadDir, log,
+	)
+	searchService := search.New(
+		chunkRepo, embedderClient, rerankerClient, readerClient,
+		a.config.Search,
 	)
 
-	handler := server.NewRouter(userRepo, docRepo, docService, searchService)
+	// Handlers
+	authHandler := handlers.NewAuthHandler(authService, log)
+	uploadHandler := handlers.NewUploadHandler(docService, log)
+	searchHandler := handlers.NewSearchHandler(searchService, log)
+	docHandler := handlers.NewDocumentHandler(docService, log)
+
+	// Router
+	handler := server.NewRouter(
+		authHandler, uploadHandler, searchHandler, docHandler,
+		a.config.JWTSecret,
+	)
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", a.config.Port),
@@ -74,7 +101,7 @@ func (a *App) Run() error {
 
 	serverErr := make(chan error, 1)
 	go func() {
-		slog.Info("starting server", "addr", server.Addr)
+		log.Info("starting server", "addr", server.Addr)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			serverErr <- err
 		}
@@ -85,20 +112,19 @@ func (a *App) Run() error {
 
 	select {
 	case sig := <-quit:
-		slog.Info("received signal", "signal", sig)
+		log.Info("received signal", "signal", sig)
 	case err := <-serverErr:
-		slog.Error("server error", "error", err)
+		log.Error("server error", "error", err)
 		return err
 	}
 
-	slog.Info("shutting down server...")
+	log.Info("shutting down server...")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := server.Shutdown(ctx); err != nil {
 		return fmt.Errorf("forced shutdown: %w", err)
 	}
 
-	slog.Info("server stopped gracefully")
-	os.Exit(0)
+	log.Info("server stopped gracefully")
 	return nil
 }

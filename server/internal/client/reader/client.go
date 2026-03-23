@@ -1,4 +1,4 @@
-package service
+package reader
 
 import (
 	"bytes"
@@ -8,33 +8,33 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/AndB0ndar/doc-archive/internal/config"
+	"github.com/AndB0ndar/doc-archive/internal/domain"
 )
 
-type Reader struct {
+type client struct {
 	URL        string
 	httpClient *http.Client
 }
 
-func NewReader(cfg *config.Config) *Reader {
-	return &Reader{
-		URL: cfg.ReaderURL,
+func New(ReaderURL string) domain.ReaderClient {
+	return &client{
+		URL: ReaderURL,
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
 		},
 	}
 }
 
-type AnswerResponse struct {
+type answerResponse struct {
 	Answer     string  `json:"answer"`
 	Confidence float64 `json:"confidence"`
 	Start      int     `json:"start"`
 	End        int     `json:"end"`
 }
 
-func (c *Reader) ExtractAnswer(
-	question, context string,
-) (*AnswerResponse, error) {
+func (c *client) Answer(
+	question string, context string,
+) (*domain.Answer, error) {
 	reqBody, err := json.Marshal(map[string]string{
 		"question": question,
 		"context":  context,
@@ -56,9 +56,15 @@ func (c *Reader) ExtractAnswer(
 		return nil, fmt.Errorf("reader returned status %d: %s", resp.StatusCode, string(body))
 	}
 
-	var ans AnswerResponse
-	if err := json.NewDecoder(resp.Body).Decode(&ans); err != nil {
+	var response answerResponse
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
 		return nil, fmt.Errorf("decode response: %w", err)
 	}
-	return &ans, nil
+
+	return &domain.Answer{
+		Answer:     response.Answer,
+		Confidence: response.Confidence,
+		Start:      response.Start,
+		End:        response.End,
+	}, nil
 }

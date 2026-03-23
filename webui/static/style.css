@@ -271,48 +271,98 @@ input:focus, select:focus {
 /* ===== Result search ===== */
 .results-list {
     list-style: none;
-    background: var(--bg);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
-    overflow: hidden;
+    padding: 0;
 }
 
-.results-list li {
-    padding: 1.5rem;
-    border-bottom: 1px solid var(--border);
+.result-item {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.results-list li:last-child {
-    border-bottom: none;
+.result-item.has-answer {
+    border-left: 5px solid #4CAF50;
 }
 
-.results-list a {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: var(--primary);
+.result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.result-title {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #007acc;
     text-decoration: none;
 }
 
-.results-list a:hover {
+.result-title:hover {
     text-decoration: underline;
 }
 
 .similarity {
-    font-size: 0.9rem;
-    color: var(--gray-500);
-    margin-left: 0.5rem;
+    font-size: 0.9em;
+    color: #666;
+}
+
+.result-meta {
+    font-size: 0.9em;
+    color: #666;
+    margin-bottom: 12px;
+}
+
+.result-content {
+    line-height: 1.5;
 }
 
 .snippet {
-    margin: 0.5rem 0;
-    color: var(--gray-600);
-    line-height: 1.6;
+    margin: 5px 0;
+    color: #444;
 }
 
 .results-list small {
     display: block;
     color: var(--gray-500);
     font-size: 0.85rem;
+}
+
+mark {
+    background: #ffeb3b;
+    padding: 2px 0;
+}
+
+.answer-box {
+    background: #e8f5e8;
+    border-left: 3px solid #4CAF50;
+    padding: 10px 15px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+}
+
+.answer-text {
+    font-size: 1.1em;
+    font-weight: 500;
+}
+
+.confidence {
+    font-size: 0.9em;
+    color: #2e7d32;
+    margin-left: 10px;
+}
+
+details {
+    margin-top: 8px;
+    cursor: pointer;
+}
+
+details summary {
+    color: #007acc;
+    font-weight: 500;
 }
 
 /* ===== Document page ===== */

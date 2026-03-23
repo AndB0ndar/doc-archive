@@ -2,22 +2,27 @@ package handlers
 
 import (
 	"encoding/json"
-	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
+	"time"
 
+	"github.com/AndB0ndar/doc-archive/internal/domain"
 	"github.com/AndB0ndar/doc-archive/internal/middleware"
-	"github.com/AndB0ndar/doc-archive/internal/service"
+	"github.com/AndB0ndar/doc-archive/internal/models"
 )
 
 type SearchHandler struct {
-	searchService *service.SearchService
+	searchService domain.SearchService
+	logger        *slog.Logger
 }
 
-func NewSearchHandler(searchService *service.SearchService) *SearchHandler {
+func NewSearchHandler(
+	searchService domain.SearchService, logger *slog.Logger,
+) *SearchHandler {
 	return &SearchHandler{
 		searchService: searchService,
+		logger:        logger,
 	}
 }
 
@@ -27,63 +32,127 @@ func NewSearchHandler(searchService *service.SearchService) *SearchHandler {
 // @Tags         search
 // @Produce      json
 // @Param        q query string true "Поисковый запрос"
-// @Param        type query string false "Тип поиска: text (по умолчанию) или vector"
+// @Param        type query string false "Тип поиска: text (по умолчанию) или vector/semantic"
 // @Param        limit query int false "Максимальное количество результатов (макс 100)"
-// @Success      200  {array}   models.ChunkSearchResponse
+// @Success      200  {object}  models.SearchResponse
 // @Failure      400  {object}  map[string]string
 // @Failure      401  {object}  map[string]string
 // @Security     BearerAuth
 // @Router       /search [get]
-func (h *SearchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	userID, ok := r.Context().Value(middleware.UserIDKey).(int)
+func (h *SearchHandler) Search(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	logger := h.logger.With(
+		slog.String("method", r.Method),
+		slog.String("path", r.URL.Path),
+	)
+	logger.Debug("Search request started")
+
+	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
 	if !ok {
+		logger.Warn("Search: unauthorized - userID missing in context")
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
+	logger = logger.With(slog.String("user_id", userID))
 
-	req := service.SearchRequest{
-		Query:  r.URL.Query().Get("q"),
-		Type:   r.URL.Query().Get("type"),
-		UserID: userID,
+	query := r.URL.Query().Get("q")
+	if query == "" {
+		logger.Warn("Search: missing search query (q)")
+		http.Error(w, "Missing search query (q)", http.StatusBadRequest)
+		return
 	}
-	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
-		if l, err := strconv.Atoi(limitStr); err == nil {
-			req.Limit = l
+	logger = logger.With(slog.String("query", query))
+
+	searchType := r.URL.Query().Get("type")
+	if searchType == "" {
+		searchType = "text"
+		logger.Debug(
+			"Search: using default search type",
+			slog.String("type", searchType),
+		)
+	}
+	if searchType != "text" && searchType != "vector" && searchType != "semantic" {
+		logger.Warn(
+			"Search: invalid search type",
+			slog.String("provided_type", searchType),
+		)
+		http.Error(
+			w, "Invalid search type. Use 'text', 'vector', or 'semantic'",
+			http.StatusBadRequest,
+		)
+		return
+	}
+	logger = logger.With(slog.String("search_type", searchType))
+
+	limit := 10 // default
+	limitStr := r.URL.Query().Get("limit")
+	if limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
+			if l > 100 {
+				l = 100
+				logger.Debug(
+					"Search: limit capped to 100",
+					slog.Int("original", l),
+					slog.Int("capped", 100),
+				)
+			}
+			limit = l
+		} else {
+			logger.Warn(
+				"Search: invalid limit parameter, using default",
+				slog.String("limit_str", limitStr),
+				slog.Any("error", err),
+			)
 		}
 	}
+	logger = logger.With(slog.Int("limit", limit))
+	logger.Debug("Search: parameters validated")
 
-	results, err := h.searchService.Search(req)
+	searchQuery := domain.SearchQuery{
+		Query: query,
+		Type:  searchType,
+	}
+
+	logger.Debug("Search: calling searchService.Search")
+	results, err := h.searchService.Search(
+		r.Context(), searchQuery, userID, limit,
+	)
 	if err != nil {
-		h.handleError(w, err)
+		logger.Error("Search: search failed", slog.Any("error", err))
+		http.Error(w, "Search failed", http.StatusInternalServerError)
+		return
+	}
+	logger.Debug(
+		"Search: search completed", slog.Int("results_count", len(results)),
+	)
+
+	// mapping domain.SearchResult -> models.SearchResultItem
+	items := make([]models.SearchResultItem, len(results))
+	for i, r := range results {
+		items[i] = models.SearchResultItem{
+			ChunkID:    r.ChunkID,
+			DocumentID: r.DocumentID,
+			Content:    r.Content,
+			Answer:     r.Answer,
+			Confidence: r.Confidence,
+		}
+	}
+	logger.Debug(
+		"Search: transformed results", slog.Int("items_count", len(items)),
+	)
+
+	resp := models.SearchResponse{Results: items}
+	w.Header().Set("Content-Type", "application/json")
+	logger.Debug("Search: encoding response")
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		logger.Error(
+			"Search: failed to encode search results", slog.Any("error", err),
+		)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(results); err != nil {
-		slog.Error("failed to encode search results", "error", err)
-	}
-}
-
-func (h *SearchHandler) handleError(w http.ResponseWriter, err error) {
-	switch {
-	case errors.Is(err, service.ErrEmptyQuery):
-		http.Error(w, "Missing search query (q)", http.StatusBadRequest)
-	case errors.Is(err, service.ErrInvalidType):
-		http.Error(
-			w,
-			"Invalid search type. Use 'text' or 'semantic'",
-			http.StatusBadRequest,
-		)
-	case errors.Is(err, service.ErrEmbedding):
-		slog.Error("embedding failed", "error", err)
-		http.Error(
-			w,
-			"Search service unavailable",
-			http.StatusServiceUnavailable,
-		)
-	default:
-		slog.Error("search failed", "error", err)
-		http.Error(w, "Search failed", http.StatusInternalServerError)
-	}
+	logger.Info(
+		"Search: completed", slog.Duration("duration", time.Since(start)),
+	)
 }

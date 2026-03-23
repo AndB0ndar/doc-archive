@@ -41,3 +41,5 @@ async def health():
         reader_model=settings.reader_model_name,
     )
 
+# TODO: add info about loaded models (exist HF_TOKEN in env)
+

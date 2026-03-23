@@ -1,0 +1,39 @@
+{% if results %}
+<ul class="results-list">
+    {% for r in results %}
+    <li class="result-item {% if r.answer %}has-answer{% endif %}">
+        <div class="result-header">
+            <a href="{{ url_for('document', doc_id=r.document_id) }}" class="result-title">
+                Документ {{ r.document_id }}
+            </a>
+            {% if r.confidence %}
+            <span class="similarity">({{ "%.1f"|format(r.confidence * 100) }}%)</span>
+            {% endif %}
+        </div>
+        <!--
+        <div class="result-meta">
+            {% if r.authors %}Авторы: {{ r.authors }} | {% endif %}
+            {% if r.year %}Год: {{ r.year }} | {% endif %}
+            {% if r.category %}Категория: {{ r.category }}{% endif %}
+        </div>
+        -->
+        <div class="result-content">
+            {% if r.answer %}
+                <div class="answer-box">
+                    <strong>Ответ:</strong>
+                    <span class="answer-text">{{ r.answer }}</span>
+                </div>
+                <details>
+                    <summary>Контекст</summary>
+                    <p class="snippet">{{ r.content }}</p>
+                </details>
+            {% else %}
+                <p class="snippet">{{ r.content[:300] }}...</p>
+            {% endif %}
+        </div>
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+<p class="no-results">😕 Ничего не найдено. Попробуйте изменить запрос.</p>
+{% endif %}

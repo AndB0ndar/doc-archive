@@ -6,107 +6,120 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/AndB0ndar/doc-archive/internal/domain"
 	"github.com/AndB0ndar/doc-archive/internal/models"
 )
 
 type DocumentRepository struct {
-	ctx context.Context
-	db  *pgxpool.Pool
+	db *pgxpool.Pool
 }
 
-func NewDocumentRepository(db *pgxpool.Pool) *DocumentRepository {
-	return &DocumentRepository{
-		ctx: context.Background(),
-		db:  db,
-	}
+func NewDocumentRepository(db *pgxpool.Pool) domain.DocumentRepository {
+	return &DocumentRepository{db: db}
 }
 
-func (r *DocumentRepository) Create(doc *models.Document) (int, error) {
+func (r *DocumentRepository) Create(
+	ctx context.Context, doc *domain.Document,
+) (string, error) {
 	query := `
         INSERT INTO documents (title, authors, year, category, file_path, file_size, user_id)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
-        RETURNING id, created_at
+        RETURNING id
     `
-	err := r.db.QueryRow(r.ctx, query,
+	var id string
+	err := r.db.QueryRow(ctx, query,
 		doc.Title, doc.Authors, doc.Year, doc.Category, doc.FilePath, doc.FileSize, doc.UserID,
-	).Scan(&doc.ID, &doc.CreatedAt)
+	).Scan(&id)
 	if err != nil {
-		return 0, fmt.Errorf("insert document: %w", err)
+		return "", fmt.Errorf("insert document: %w", err)
 	}
-	return doc.ID, nil
+	return id, nil
 }
 
-func (r *DocumentRepository) GetByID(id, userID int) (*models.Document, error) {
+func (r *DocumentRepository) GetByID(
+	ctx context.Context, id string, userID string,
+) (*domain.Document, error) {
 	query := `
-		SELECT
-			id,
-			title,
-			authors,
-			year,
-			category,
-			file_path,
-			file_size,
-			created_at
-		FROM documents WHERE id = $1 AND user_id = $2
-	`
-	var doc models.Document
-	err := r.db.QueryRow(r.ctx, query, id, userID).Scan(
-		&doc.ID, &doc.Title, &doc.Authors, &doc.Year, &doc.Category,
-		&doc.FilePath, &doc.FileSize, &doc.CreatedAt,
+        SELECT id, title, authors, year, category, file_path, file_size, user_id, created_at
+        FROM documents
+        WHERE id = $1 AND user_id = $2
+    `
+	var dbDoc models.DocumentDB
+	err := r.db.QueryRow(ctx, query, id, userID).Scan(
+		&dbDoc.ID, &dbDoc.Title, &dbDoc.Authors, &dbDoc.Year, &dbDoc.Category,
+		&dbDoc.FilePath, &dbDoc.FileSize, &dbDoc.UserID, &dbDoc.CreatedAt,
 	)
 	if err != nil {
 		return nil, err
 	}
-	return &doc, nil
+	return &domain.Document{
+		ID:        dbDoc.ID,
+		Title:     dbDoc.Title,
+		Authors:   dbDoc.Authors,
+		Year:      dbDoc.Year,
+		Category:  dbDoc.Category,
+		FilePath:  dbDoc.FilePath,
+		FileSize:  dbDoc.FileSize,
+		UserID:    dbDoc.UserID,
+		CreatedAt: dbDoc.CreatedAt,
+	}, nil
 }
 
-func (r *DocumentRepository) GetAll(
-	userID, limit, offset int,
-) ([]models.Document, error) {
+func (r *DocumentRepository) GetByUserID(
+	ctx context.Context, userID string, limit, offset int,
+) ([]*domain.Document, error) {
 	if limit <= 0 {
 		limit = 20
 	}
 	query := `
-        SELECT
-			id,
-			title,
-			authors,
-			year,
-			category,
-			file_path,
-			file_size,
-			created_at
-		FROM documents WHERE user_id = $1 ORDER BY created_at DESC
+        SELECT id, title, authors, year, category, file_path, file_size, user_id, created_at
+        FROM documents
+        WHERE user_id = $1
+        ORDER BY created_at DESC
         LIMIT $2 OFFSET $3
     `
-	rows, err := r.db.Query(r.ctx, query, userID, limit, offset)
+	rows, err := r.db.Query(ctx, query, userID, limit, offset)
 	if err != nil {
-		return nil, fmt.Errorf("get all documents: %w", err)
+		return nil, fmt.Errorf("get documents by user: %w", err)
 	}
 	defer rows.Close()
 
-	var docs []models.Document
+	var docs []*domain.Document
 	for rows.Next() {
-		var d models.Document
+		var dbDoc models.DocumentDB
 		if err := rows.Scan(
-			&d.ID, &d.Title, &d.Authors, &d.Year, &d.Category,
-			&d.FilePath, &d.FileSize, &d.CreatedAt,
+			&dbDoc.ID, &dbDoc.Title, &dbDoc.Authors, &dbDoc.Year, &dbDoc.Category,
+			&dbDoc.FilePath, &dbDoc.FileSize, &dbDoc.UserID, &dbDoc.CreatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("scan document: %w", err)
 		}
-		docs = append(docs, d)
+		docs = append(docs, &domain.Document{
+			ID:        dbDoc.ID,
+			Title:     dbDoc.Title,
+			Authors:   dbDoc.Authors,
+			Year:      dbDoc.Year,
+			Category:  dbDoc.Category,
+			FilePath:  dbDoc.FilePath,
+			FileSize:  dbDoc.FileSize,
+			UserID:    dbDoc.UserID,
+			CreatedAt: dbDoc.CreatedAt,
+		})
 	}
 	return docs, nil
 }
 
-func (r *DocumentRepository) Delete(id, userID int) error {
+func (r *DocumentRepository) Delete(
+	ctx context.Context, id string, userID string,
+) error {
 	query := `DELETE FROM documents WHERE id = $1 AND user_id = $2`
-	cmdTag, err := r.db.Exec(r.ctx, query, id, userID)
+	cmdTag, err := r.db.Exec(ctx, query, id, userID)
 	if err != nil {
 		return fmt.Errorf("delete document: %w", err)
 	}
 	if cmdTag.RowsAffected() == 0 {
-		return fmt.Errorf("document with id %d not found", id)
+		return fmt.Errorf(
+			"document with id %s and user_id %s not found", id, userID,
+		)
 	}
 	return nil
 }

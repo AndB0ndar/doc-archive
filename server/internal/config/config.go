@@ -9,25 +9,31 @@ import (
 )
 
 type Config struct {
-	Port               int
-	Env                string
-	UploadDir          string
-	EmbedderURL        string
-	RerankerURL        string
-	RerankerEnabled    bool
-	ReaderURL          string
-	ReaderEnabled      bool
-	Database           DatabaseConfig
-	SearchDefaultLimit int
-	SearchMaxLimit     int
-	Chunks             ChunkConfig
-	JWTSecret          string
+	Port        int
+	Env         string
+	UploadDir   string
+	EmbedderURL string
+	RerankerURL string
+	ReaderURL   string
+	Database    DatabaseConfig
+	Search      SearchConfig
+	Chunk       ChunkConfig
+	JWTSecret   string
+	JWTExpiry   int
 }
 
 type ChunkConfig struct {
-	Size       int
-	Overlap    int
-	Separators []string
+	Size             int
+	Overlap          int
+	Separators       []string
+	SplitBySentences bool
+}
+
+type SearchConfig struct {
+	DefaultLimit    int
+	MaxLimit        int
+	RerankerEnabled bool
+	ReaderEnabled   bool
 }
 
 type DatabaseConfig struct {
@@ -49,21 +55,25 @@ func Load() (*Config, error) {
 	}
 
 	return &Config{
-		Port:               port,
-		UploadDir:          getEnv("UPLOAD_DIR", "uploads"),
-		EmbedderURL:        getEnv("EMBEDDER_URL", "http://localhost:5001"),
-		RerankerURL:        getEnv("RERANKER_URL", "http://localhost:5001"),
-		RerankerEnabled:    getEnv("RERANKER_ENABLED", "1") == "1",
-		ReaderURL:          getEnv("READER_URL", "http://embedder:5001"),
-		ReaderEnabled:      getEnv("READER_ENABLED", "1") == "1",
-		Env:                getEnv("ENV", "development"),
-		JWTSecret:          getEnv("SECRET_KEY", "default-secret-change-me"),
-		SearchDefaultLimit: 20,
-		SearchMaxLimit:     100,
-		Chunks: ChunkConfig{
-			Size:       500,
-			Overlap:    1,
-			Separators: []string{"\n\n", "\n", ". ", "? ", "! "},
+		Port:        port,
+		UploadDir:   getEnv("UPLOAD_DIR", "uploads"),
+		EmbedderURL: getEnv("EMBEDDER_URL", "http://localhost:5001"),
+		RerankerURL: getEnv("RERANKER_URL", "http://localhost:5001"),
+		ReaderURL:   getEnv("READER_URL", "http://embedder:5001"),
+		Env:         getEnv("ENV", "development"),
+		JWTSecret:   getEnv("SECRET_KEY", "default-secret-change-me"),
+		JWTExpiry:   getEnvAsInt("JWTExpiry", 24), // hourse
+		Search: SearchConfig{
+			DefaultLimit:    20,
+			MaxLimit:        100,
+			RerankerEnabled: getEnv("RERANKER_ENABLED", "1") == "1",
+			ReaderEnabled:   getEnv("READER_ENABLED", "1") == "1",
+		},
+		Chunk: ChunkConfig{
+			Size:             500,
+			Overlap:          1,
+			Separators:       []string{"\n\n", "\n", ". ", "? ", "! "},
+			SplitBySentences: true,
 		},
 		Database: DatabaseConfig{
 			URL:               getEnv("DATABASE_URL", "postgres://user:pass@localhost:5432/docdb?sslmode=disable"),
@@ -80,6 +90,15 @@ func Load() (*Config, error) {
 func getEnv(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
+	}
+	return defaultValue
+}
+
+func getEnvAsInt(key string, defaultValue int) int {
+	if value, exists := os.LookupEnv(key); exists {
+		if i, err := strconv.Atoi(value); err == nil {
+			return i
+		}
 	}
 	return defaultValue
 }
