@@ -11,7 +11,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY ./app ./app
 
 ENV PORT=5000
-ENV EMBED_MODEL_NAME=multi-qa-MiniLM-L6-cos-v1
+ENV EMBED_MODEL_NAME="all-MiniLM-L6-v2"
+ENV RERANK_MODEL_NAME="cross-encoder/ms-marco-MiniLM-L-6-v2"
+ENV READER_MODEL_NAME="distilbert-base-cased-distilled-squad"
 ENV MAX_TEXT_LENGTH=5000
 
 EXPOSE $PORT

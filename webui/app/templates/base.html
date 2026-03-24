@@ -19,10 +19,10 @@
             <h1><a href="/">PDF Search</a></h1>
             <nav>
                 {% if session.user %}
-                    <a href="{{ url_for('logout') }}">Выйти</a>
+                    <a href="{{ url_for('auth.logout') }}">Выйти</a>
                 {% else %}
-                    <a href="{{ url_for('login') }}">Войти</a>
-                    <a href="{{ url_for('register') }}">Регистрация</a>
+                    <a href="{{ url_for('auth.login') }}">Войти</a>
+                    <a href="{{ url_for('auth.register') }}">Регистрация</a>
                 {% endif %}
             </nav>
         </div>

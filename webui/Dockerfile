@@ -9,10 +9,11 @@ COPY . .
 
 RUN mkdir -p /app/uploads
 
-ENV FLASK_APP=app.py \
-    FLASK_RUN_HOST=0.0.0.0 \
-    FLASK_RUN_PORT=5000
+ENV FLASK_APP="app.py"
+ENV FLASK_RUN_HOST="0.0.0.0"
+ENV FLASK_RUN_PORT=5000
 
 EXPOSE $FLASK_RUN_PORT
 
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--timeout", "120", "wsgi:app"]
+

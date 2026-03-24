@@ -3,7 +3,7 @@
     {% for r in results %}
     <li class="result-item {% if r.answer %}has-answer{% endif %}">
         <div class="result-header">
-            <a href="{{ url_for('document', doc_id=r.document_id) }}" class="result-title">
+            <a href="{{ url_for('main.document', doc_id=r.document_id) }}" class="result-title">
                 Документ {{ r.document_id }}
             </a>
             {% if r.confidence %}
@@ -35,5 +35,5 @@
     {% endfor %}
 </ul>
 {% else %}
-<p class="no-results">😕 Ничего не найдено. Попробуйте изменить запрос.</p>
+<p class="no-results">Ничего не найдено( Попробуйте изменить запрос.</p>
 {% endif %}
