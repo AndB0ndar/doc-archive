@@ -76,7 +76,7 @@ func (a *App) Run() error {
 	)
 	searchService := search.New(
 		chunkRepo, embedderClient, rerankerClient, readerClient,
-		a.config.Search,
+		a.config.Search, log,
 	)
 
 	// Handlers

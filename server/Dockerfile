@@ -15,7 +15,11 @@ RUN go build -o doc-search cmd/server/main.go
 # ---- Final stage ----
 FROM alpine:latest
 
-RUN apk --no-cache add ca-certificates curl
+#We install the necessary packages:
+#   ca-certificates – for HTTPS
+#   curl requests – for healthcheck
+#  poppler-utils – for pdftotext (extracting text from PDF
+RUN apk --no-cache add ca-certificates curl poppler-utils
 
 WORKDIR /app
 
