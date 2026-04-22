@@ -9,8 +9,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/AndB0ndar/doc-archive/internal/cache"
 	"github.com/AndB0ndar/doc-archive/internal/config"
 	"github.com/AndB0ndar/doc-archive/internal/db"
+	"github.com/AndB0ndar/doc-archive/internal/domain"
 	"github.com/AndB0ndar/doc-archive/internal/handlers"
 	"github.com/AndB0ndar/doc-archive/internal/logger"
 	"github.com/AndB0ndar/doc-archive/internal/repository"
@@ -43,16 +45,34 @@ func (a *App) Run() error {
 	}
 
 	// DB
-	pool, err := db.NewPool(a.config.Database)
+	pool, err := db.NewPool(a.config.Database, log)
 	if err != nil {
 		return fmt.Errorf("failed to connect to database: %w", err)
 	}
 	defer pool.Close()
 
 	// Repositories
-	docRepo := repository.NewDocumentRepository(pool)
+	oDocRepo := repository.NewDocumentRepository(pool)
 	chunkRepo := repository.NewChunkRepository(pool)
-	userRepo := repository.NewUserRepository(pool)
+	oUserRepo := repository.NewUserRepository(pool)
+
+	// Caches (Redis)
+	var docRepo domain.DocumentRepository
+	var userRepo domain.UserRepository
+	redisCache, err := cache.NewRedisCache(a.config.RedisURL)
+	if err != nil {
+		log.Warn("Redis unavailable, running without cache", "error", err)
+		docRepo = oDocRepo
+		userRepo = oUserRepo
+	} else {
+		log.Info("connected to Redis")
+		docRepo = repository.NewCachedDocumentRepository(
+			oDocRepo, redisCache, 5*time.Minute, log,
+		)
+		userRepo = repository.NewCachedUserRepository(
+			oUserRepo, redisCache, 1*time.Hour,
+		)
+	}
 
 	// Clients
 	embedderClient := embedder.New(a.config.EmbedderURL)

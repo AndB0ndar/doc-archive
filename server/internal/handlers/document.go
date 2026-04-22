@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -33,7 +34,7 @@ func NewDocumentHandler(
 // @Description  Возвращает метаданные документа по ID.
 // @Tags         documents
 // @Produce      json
-// @Param        id path int true "ID документа"
+// @Param        id path string true "ID документа"
 // @Success      200  {object}  models.DocumentResponse
 // @Failure      400  {string}  string "Invalid document ID"
 // @Failure      401  {string}  string "Unauthorized"
@@ -187,7 +188,7 @@ func (h *DocumentHandler) ListDocuments(w http.ResponseWriter, r *http.Request) 
 // @Summary      Удалить документ
 // @Description  Удаляет документ по ID и его PDF-файл.
 // @Tags         documents
-// @Param        id path int true "ID документа"
+// @Param        id path string true "ID документа"
 // @Success      204  "No Content"
 // @Failure      400  {string}  string "Invalid document ID"
 // @Failure      401  {string}  string "Unauthorized"
@@ -226,13 +227,17 @@ func (h *DocumentHandler) DeleteDocument(
 	if err := h.docService.DeleteDocument(
 		r.Context(), id, userID,
 	); err != nil {
-		logger.Error(
-			"DeleteDocument: failed to delete document",
-			slog.Any("error", err),
-		)
-		http.Error(
-			w, "Failed to delete document", http.StatusInternalServerError,
-		)
+		if strings.Contains(err.Error(), "not found") {
+			http.Error(w, "Document not found", http.StatusNotFound)
+		} else {
+			logger.Error(
+				"DeleteDocument: failed to delete document",
+				slog.Any("error", err),
+			)
+			http.Error(
+				w, "Failed to delete document", http.StatusInternalServerError,
+			)
+		}
 		return
 	}
 

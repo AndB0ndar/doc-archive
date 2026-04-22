@@ -3,7 +3,7 @@ name: doc-archive
 services:
   postgres:
     image: pgvector/pgvector:pg15
-    container_name: doc-postgres
+    container_name: postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pass}
@@ -22,17 +22,37 @@ services:
     networks:
       - doc-net
 
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    restart: unless-stopped
+    networks:
+      - doc-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
   embedder:
     build: ./embedder
-    container_name: doc-embedder
+    container_name: embedder
     environment:
       EMBED_MODEL_NAME: ${EMBED_MODEL:-all-MiniLM-L6-v2}
       RERANK_MODEL_NAME: ${RERANK_MODEL:-cross-encoder/ms-marco-MiniLM-L-6-v2}
       READER_MODEL_NAME: ${READER_MODEL:-distilbert-base-cased-distilled-squad}
       MAX_TEXT_LENGTH: 5000
       HF_TOKEN: ${HF_TOKEN:-}
+      HF_HOME: /cache/huggingface  # for cache
     ports:
       - "5001:5000"
+    volumes:
+      - hf_cache:/cache/huggingface
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 30s
@@ -43,9 +63,10 @@ services:
 
   api:
     build: ./server
-    container_name: doc-api
+    container_name: api
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-pass}@postgres:5432/${POSTGRES_DB:-docdb}?sslmode=disable
+      REDIS_URL: redis:6379
       EMBEDDER_URL: http://embedder:5000
       RERANKER_URL: http://embedder:5000
       READER_URL: http://embedder:5000
@@ -60,6 +81,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
       embedder:
         condition: service_healthy
     healthcheck:
@@ -73,7 +96,7 @@ services:
 
   webui:
     build: ./webui
-    container_name: doc-webui
+    container_name: webui
     environment:
       GO_API_BASE_URL: http://api:8080
       UPLOAD_DIR: /app/uploads
@@ -92,6 +115,8 @@ services:
 volumes:
   pgdata:
   uploads:
+  redisdata:
+  hf_cache:
 
 networks:
   doc-net:

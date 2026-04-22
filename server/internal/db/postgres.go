@@ -12,7 +12,7 @@ import (
 	"github.com/AndB0ndar/doc-archive/internal/config"
 )
 
-func NewPool(cfg config.DatabaseConfig) (*pgxpool.Pool, error) {
+func NewPool(cfg config.DatabaseConfig, logger *slog.Logger) (*pgxpool.Pool, error) {
 	poolCfg, err := pgxpool.ParseConfig(cfg.URL)
 	if err != nil {
 		return nil, fmt.Errorf("parse config: %w", err)
@@ -36,6 +36,6 @@ func NewPool(cfg config.DatabaseConfig) (*pgxpool.Pool, error) {
 		return nil, fmt.Errorf("ping database: %w", err)
 	}
 
-	slog.Info("connected to PostgreSQL")
+	logger.Info("connected to PostgreSQL")
 	return pool, nil
 }

@@ -20,6 +20,7 @@ type Config struct {
 	Chunk       ChunkConfig
 	JWTSecret   string
 	JWTExpiry   int
+	RedisURL    string
 }
 
 type ChunkConfig struct {
@@ -57,8 +58,8 @@ func Load() (*Config, error) {
 	return &Config{
 		Port:        port,
 		UploadDir:   getEnv("UPLOAD_DIR", "uploads"),
-		EmbedderURL: getEnv("EMBEDDER_URL", "http://localhost:5001"),
-		RerankerURL: getEnv("RERANKER_URL", "http://localhost:5001"),
+		EmbedderURL: getEnv("EMBEDDER_URL", "http://embedder:5001"),
+		RerankerURL: getEnv("RERANKER_URL", "http://embedder:5001"),
 		ReaderURL:   getEnv("READER_URL", "http://embedder:5001"),
 		Env:         getEnv("ENV", "development"),
 		JWTSecret:   getEnv("SECRET_KEY", "default-secret-change-me"),
@@ -84,6 +85,7 @@ func Load() (*Config, error) {
 			MaxConnIdleTime:   5 * time.Minute,
 			HealthCheckPeriod: 1 * time.Minute,
 		},
+		RedisURL: getEnv("REDIS_URL", "redis:6379"),
 	}, nil
 }
 

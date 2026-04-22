@@ -130,7 +130,7 @@ http://localhost:8080/swagger/index.html
 
 ### Go‑сервер (`api`)
 - `DATABASE_URL` — строка подключения к PostgreSQL.
-- `EMBEDDER_URL` — адрес Python‑сервиса (по умолч. `http://embedder:5001`).
+- `EMBEDDER_URL` — адрес Python‑сервиса (по умолч. `http://embedder:5000`).
 - `UPLOAD_DIR` — директория для сохранения PDF (по умолч. `uploads`).
 - `PORT` — порт (по умолч. `8080`).
 - `ENV` — `development` или `production` (влияет на формат логов).

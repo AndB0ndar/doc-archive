@@ -14,24 +14,6 @@ import (
 	mdwr "github.com/AndB0ndar/doc-archive/internal/middleware"
 )
 
-// @title           PDF Search API
-// @version         1.0
-// @description     API для интеллектуального поиска по документам.
-// @termsOfService  http://example.com/terms/
-
-// @contact.name   API Support
-// @contact.url    http://example.com/support
-// @contact.email  support@example.com
-
-// @license.name  MIT
-// @license.url   https://opensource.org/licenses/MIT
-
-// @host      localhost:8080
-// @BasePath  /
-
-// @securityDefinitions.apikey BearerAuth
-// @in header
-// @name Authorization
 func NewRouter(
 	authHandler *handlers.AuthHandler,
 	uploadHandler *handlers.UploadHandler,

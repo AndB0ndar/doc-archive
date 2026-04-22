@@ -3,20 +3,19 @@
     {% for r in results %}
     <li class="result-item {% if r.answer %}has-answer{% endif %}">
         <div class="result-header">
-            <a href="{{ url_for('main.document', doc_id=r.document_id) }}" class="result-title">
-                Документ {{ r.document_id }}
+            {% if r.answer %}
+            <a href="{{ url_for('main.document', doc_id=r.document.id) }}" class="result-title">
+                Документ "{{ r.document.title }}"
             </a>
+            {% else %}
+                Документ -
+            {% endif %}
+            <!--
             {% if r.confidence %}
             <span class="similarity">({{ "%.1f"|format(r.confidence * 100) }}%)</span>
             {% endif %}
+            -->
         </div>
-        <!--
-        <div class="result-meta">
-            {% if r.authors %}Авторы: {{ r.authors }} | {% endif %}
-            {% if r.year %}Год: {{ r.year }} | {% endif %}
-            {% if r.category %}Категория: {{ r.category }}{% endif %}
-        </div>
-        -->
         <div class="result-content">
             {% if r.answer %}
                 <div class="answer-box">

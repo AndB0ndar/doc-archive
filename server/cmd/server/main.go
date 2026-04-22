@@ -1,3 +1,18 @@
+// @title           PDF Search API
+// @version         1.0
+// @description     API для интеллектуального поиска по документам.
+
+// @contact.name   arbon
+
+// @license.name  MIT
+// @license.url   https://opensource.org/licenses/MIT
+
+// @host      localhost:8080
+// @BasePath  /
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
 package main
 
 import (
