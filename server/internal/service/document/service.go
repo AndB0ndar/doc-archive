@@ -1,19 +1,20 @@
 package document
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"log/slog"
 	"mime/multipart"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/AndB0ndar/doc-archive/internal/domain"
 	"github.com/AndB0ndar/doc-archive/internal/parser"
+	"github.com/AndB0ndar/doc-archive/internal/storage"
 )
 
 type Service struct {
@@ -21,7 +22,7 @@ type Service struct {
 	chunkRepo domain.ChunkRepository
 	embedder  domain.EmbedderClient
 	chunker   domain.ChunkerService
-	uploadDir string
+	storage   *storage.MinIOStorage
 	logger    *slog.Logger
 }
 
@@ -30,7 +31,7 @@ func New(
 	chunkRepo domain.ChunkRepository,
 	embedder domain.EmbedderClient,
 	chunker domain.ChunkerService,
-	uploadDir string,
+	storage *storage.MinIOStorage,
 	logger *slog.Logger,
 ) domain.DocumentService {
 	return &Service{
@@ -38,7 +39,7 @@ func New(
 		chunkRepo: chunkRepo,
 		embedder:  embedder,
 		chunker:   chunker,
-		uploadDir: uploadDir,
+		storage:   storage,
 		logger:    logger,
 	}
 }
@@ -72,28 +73,25 @@ func (s *Service) Upload(
 	}
 
 	// Generate uniqe name of file
-	uniqueID := uuid.New().String()
-	filename := uniqueID + ".pdf"
-	fullPath := filepath.Join(s.uploadDir, filename)
+	objectKey := uuid.New().String() + ".pdf"
 
-	// Create directory (if not exist)
-	if err := os.MkdirAll(s.uploadDir, 0755); err != nil {
-		s.logger.Error("failed to create upload directory", "error", err)
-		return "", fmt.Errorf("create upload dir: %w", err)
-	}
-
-	// Save file
-	dst, err := os.Create(fullPath)
+	// Save in MinIO
+	fileBytes, err := io.ReadAll(file)
 	if err != nil {
-		s.logger.Error("failed to create destination file", "error", err)
-		return "", fmt.Errorf("create file: %w", err)
+		s.logger.Error("failed to read file", "error", err)
+		return "", fmt.Errorf("read file: %w", err)
 	}
-	defer dst.Close()
-
-	written, err := io.Copy(dst, file)
+	reader := bytes.NewReader(fileBytes)
+	err = s.storage.Upload(
+		ctx,
+		objectKey,
+		reader,
+		int64(len(fileBytes)),
+		"application/pdf",
+	)
 	if err != nil {
-		s.logger.Error("failed to copy file", "error", err)
-		return "", fmt.Errorf("copy file: %w", err)
+		s.logger.Error("failed to upload to MinIO", "error", err)
+		return "", fmt.Errorf("upload to storage: %w", err)
 	}
 
 	doc := &domain.Document{
@@ -101,32 +99,55 @@ func (s *Service) Upload(
 		Authors:  authorsPtr,
 		Year:     yearPtr,
 		Category: categoryPtr,
-		FilePath: fullPath,
-		FileSize: written,
+		FilePath: objectKey,
+		FileSize: int64(len(fileBytes)),
 		UserID:   userID,
 	}
 
 	id, err := s.docRepo.Create(ctx, doc)
 	if err != nil {
 		s.logger.Error("failed to save document metadata", "error", err)
-		_ = os.Remove(fullPath) // remove file, if not save in DB
+		_ = s.storage.Delete(ctx, objectKey) // remove file, if not save in DB
 		return "", fmt.Errorf("save metadata: %w", err)
 	}
 
-	s.logger.Info("document uploaded", "id", id, "title", title, "size", written)
+	s.logger.Info(
+		"document uploaded", "id", id, "title", title, "size", len(fileBytes),
+	)
 
-	go s.processDocument(id, fullPath)
+	go s.processDocument(id, objectKey)
 
 	return id, nil
 }
 
-func (s *Service) processDocument(docID string, filePath string) {
+func (s *Service) processDocument(docID string, objectKey string) {
 	ctx := context.Background()
 	s.logger.Info(
-		"starting document processing", "id", docID, "path", filePath,
+		"starting document processing", "id", docID, "key", objectKey,
 	)
 
-	text, err := parser.ExtractFromPDF(filePath)
+	reader, err := s.storage.Download(ctx, objectKey)
+	if err != nil {
+		s.logger.Error(
+			"failed to download from MinIO", "key", objectKey, "error", err,
+		)
+		return
+	}
+	defer reader.Close()
+
+	tmpFile, err := os.CreateTemp("", "pdf-*.pdf")
+	if err != nil {
+		s.logger.Error("failed to create temp file", "error", err)
+		return
+	}
+	defer os.Remove(tmpFile.Name())
+	defer tmpFile.Close()
+	if _, err := io.Copy(tmpFile, reader); err != nil {
+		s.logger.Error("failed to copy to temp file", "error", err)
+		return
+	}
+
+	text, err := parser.ExtractFromPDF(tmpFile.Name())
 	if err != nil {
 		s.logger.Error(
 			"failed to extract text from PDF", "id", docID, "error", err,
@@ -221,4 +242,23 @@ func (s *Service) DeleteDocument(ctx context.Context, id string, userID string) 
 
 	s.logger.Info("document deleted", "id", id, "user_id", userID)
 	return nil
+}
+
+func (s *Service) GetDocumentDownloadURL(
+	ctx context.Context, docID, userID string,
+) (string, time.Duration, error) {
+	doc, err := s.docRepo.GetByID(ctx, docID, userID)
+	if err != nil {
+		return "", 0, fmt.Errorf("document not found: %w", err)
+	}
+
+	expiresIn := 15 * time.Minute // TODO: move timeout to config
+	presignedURL, err := s.storage.GetPresignedURL(
+		ctx, doc.FilePath, expiresIn,
+	)
+	if err != nil {
+		return "", 0, fmt.Errorf("failed to generate presigned URL: %w", err)
+	}
+
+	return presignedURL, expiresIn, nil
 }

@@ -1,7 +1,9 @@
 import logging
+import requests
 
 from flask import (
     Blueprint,
+    Response,
     render_template,
     request,
     redirect,
@@ -132,7 +134,60 @@ def document(doc_id):
     doc, err = call_go_api_auth(f'/documents/{doc_id}')
     if err or doc is None:
         abort(404)
-    return render_template('pages/document.html', doc=doc)
+    
+    data, err = call_go_api_auth(f'/documents/{doc_id}/download-url')
+    file_url = None if err or not data or 'url' not in data else data['url']
+    
+    return render_template('pages/document.html', doc=doc, file_url=file_url)
+
+
+@bp.route('/documents/<uuid:doc_id>/file')
+@login_required
+def document_file(doc_id):
+    """
+    Proxy PDF file from MinIO to avoid PDF.js origin restrictions.
+    ---
+    tags:
+      - Files
+    parameters:
+      - name: doc_id
+        in: path
+        type: string
+        format: uuid
+        required: true
+        description: Unique document identifier
+    responses:
+      200:
+        description: PDF file content
+        content:
+          application/pdf:
+            schema:
+              type: string
+              format: binary
+      401:
+        description: Unauthorized (missing or invalid token)
+      404:
+        description: Document not found or file unavailable
+    """
+    data, err = call_go_api_auth(f'/documents/{doc_id}/download-url')
+    if err or not data or 'url' not in data:
+        abort(404)
+
+    presigned_url = data['url']
+
+    try:
+        resp = requests.get(presigned_url, stream=True, timeout=30)
+        resp.raise_for_status()
+    except requests.RequestException:
+        abort(404)
+
+    return Response(
+        resp.iter_content(chunk_size=8192),
+        content_type='application/pdf',
+        headers={
+            'Content-Disposition': f'inline; filename="{doc_id}.pdf"'
+        }
+    )
 
 
 @bp.route('/documents/<uuid:doc_id>/delete', methods=['DELETE'])
@@ -162,34 +217,6 @@ def delete_document(doc_id):
     response = make_response('', 200)
     response.headers['HX-Redirect'] = url_for('main.index')
     return response
-
-
-@bp.route('/uploads/<path:filename>')
-@login_required
-def uploaded_file(filename):
-    """
-    Serve uploaded PDF files for embedding (e.g., in PDF.js).
-    ---
-    tags:
-      - Files
-    parameters:
-      - name: filename
-        in: path
-        type: string
-        required: true
-        description: Name of the file in the upload folder
-    responses:
-      200:
-        description: The requested file
-        content:
-          application/pdf:
-            schema:
-              type: string
-              format: binary
-      404:
-        description: File not found
-    """
-    return send_from_directory(current_app.config['UPLOAD_DIR'], filename)
 
 
 @bp.route('/search')

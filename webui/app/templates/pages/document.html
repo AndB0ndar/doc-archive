@@ -8,12 +8,25 @@
 <p><strong>Загружен:</strong> {{ doc.created_at }}</p>
 
 <div class="pdf-viewer">
-    <iframe 
-        src="{{ url_for('static', filename='pdfjs/web/viewer.html') }}?file={{ url_for('main.uploaded_file', filename=doc.file_path.split('/')[-1]) }}" 
-        width="100%" 
+    <iframe
+        src="{{ url_for('main.document_file', doc_id=doc.id) }}"
+        width="100%"
         height="600px">
     </iframe>
 </div>
+<!-- Error with CORS( --
+<div class="pdf-viewer">
+    {% if file_url %}
+    <iframe
+        src="{{ url_for('static', filename='pdfjs/web/viewer.html') }}?file={{ file_url }}"
+        width="100%"
+        height="600px">
+    </iframe>
+    {% else %}
+    <p>Unable to load PDF file.</p>
+    {% endif %}
+</div>
+-->
 
 <div class="actions">
     <button class="delete-btn"

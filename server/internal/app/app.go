@@ -17,6 +17,7 @@ import (
 	"github.com/AndB0ndar/doc-archive/internal/logger"
 	"github.com/AndB0ndar/doc-archive/internal/repository"
 	"github.com/AndB0ndar/doc-archive/internal/server"
+	"github.com/AndB0ndar/doc-archive/internal/storage"
 
 	"github.com/AndB0ndar/doc-archive/internal/client/embedder"
 	"github.com/AndB0ndar/doc-archive/internal/client/reader"
@@ -44,12 +45,21 @@ func (a *App) Run() error {
 		log.Warn("JWT_SECRET is set to default value, please change it in production")
 	}
 
-	// DB
+	// DB PostgreSQL
 	pool, err := db.NewPool(a.config.Database, log)
 	if err != nil {
 		return fmt.Errorf("failed to connect to database: %w", err)
 	}
 	defer pool.Close()
+
+	// MinIO
+	minioStorage, err := storage.NewMinIOStorage(
+		a.config.MinIO.URL,
+		a.config.MinIO.AccessKey,
+		a.config.MinIO.SecretKey,
+		a.config.MinIO.Bucket,
+		a.config.MinIO.UseSSL,
+	)
 
 	// Repositories
 	oDocRepo := repository.NewDocumentRepository(pool)
@@ -91,8 +101,7 @@ func (a *App) Run() error {
 		a.config.Chunk.SplitBySentences,
 	)
 	docService := document.New(
-		docRepo, chunkRepo, embedderClient, chunkerSvc,
-		a.config.UploadDir, log,
+		docRepo, chunkRepo, embedderClient, chunkerSvc, minioStorage, log,
 	)
 	searchService := search.New(
 		chunkRepo, embedderClient, rerankerClient, readerClient,

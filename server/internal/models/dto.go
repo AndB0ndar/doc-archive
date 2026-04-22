@@ -32,6 +32,11 @@ type DocumentResponse struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+type DocumentDownloadURLResponse struct {
+	URL       string `json:"url"`
+	ExpiresIn int64  `json:"expires_in"`
+}
+
 type UploadResponse struct {
 	DocumentID string `json:"document_id"`
 	Status     string `json:"status"`

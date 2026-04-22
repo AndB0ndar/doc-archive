@@ -30,4 +30,5 @@ type DocumentService interface {
 	GetDocumentByID(ctx context.Context, id string, userID string) (*Document, error)
 	GetUserDocuments(ctx context.Context, userID string, limit, offset int) ([]*Document, error)
 	DeleteDocument(ctx context.Context, id string, userID string) error
+	GetDocumentDownloadURL(ctx context.Context, docID, userID string) (string, time.Duration, error)
 }

@@ -51,7 +51,7 @@ func (h *DocumentHandler) GetDocument(w http.ResponseWriter, r *http.Request) {
 
 	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
 	if !ok {
-		logger.Warn("GetDocument: unauthorized - userID missing in context")
+		logger.Warn("unauthorized - userID missing in context")
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
@@ -59,39 +59,39 @@ func (h *DocumentHandler) GetDocument(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if id == "" {
-		logger.Warn("GetDocument: invalid document ID (empty)")
+		logger.Warn("invalid document ID (empty)")
 		http.Error(w, "Invalid document ID", http.StatusBadRequest)
 		return
 	}
 	logger = logger.With(slog.String("document_id", id))
-	logger.Debug("GetDocument: parameters validated")
+	logger.Debug("parameters validated")
 
-	logger.Debug("GetDocument: calling docService.GetDocumentByID")
+	logger.Debug("calling docService.GetDocumentByID")
 	doc, err := h.docService.GetDocumentByID(r.Context(), id, userID)
 	if err != nil {
-		logger.Error("GetDocument: document not found", slog.Any("error", err))
+		logger.Error("document not found", slog.Any("error", err))
 		http.Error(w, "Document not found", http.StatusNotFound)
 		return
 	}
 
 	response := mapDocumentToResponse(doc)
 	logger.Debug(
-		"GetDocument: successfully retrieved document",
+		"successfully retrieved document",
 		slog.String("title", response.Title),
 	)
 
 	w.Header().Set("Content-Type", "application/json")
-	logger.Debug("GetDocument: encoding response")
+	logger.Debug("encoding response")
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		logger.Error(
-			"GetDocument: failed to encode response", slog.Any("error", err),
+			"failed to encode response", slog.Any("error", err),
 		)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	logger.Info(
-		"GetDocument: completed", slog.Duration("duration", time.Since(start)),
+		"document get completed", slog.Duration("duration", time.Since(start)),
 	)
 }
 
@@ -107,7 +107,9 @@ func (h *DocumentHandler) GetDocument(w http.ResponseWriter, r *http.Request) {
 // @Failure      500  {string}  string "Failed to fetch documents"
 // @Security     BearerAuth
 // @Router       /documents [get]
-func (h *DocumentHandler) ListDocuments(w http.ResponseWriter, r *http.Request) {
+func (h *DocumentHandler) ListDocuments(
+	w http.ResponseWriter, r *http.Request,
+) {
 	start := time.Now()
 	logger := h.logger.With(
 		slog.String("method", r.Method),
@@ -117,7 +119,7 @@ func (h *DocumentHandler) ListDocuments(w http.ResponseWriter, r *http.Request) 
 
 	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
 	if !ok {
-		logger.Warn("ListDocuments: unauthorized - userID missing in context")
+		logger.Warn("unauthorized - userID missing in context")
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
@@ -130,7 +132,7 @@ func (h *DocumentHandler) ListDocuments(w http.ResponseWriter, r *http.Request) 
 	if limit <= 0 || limit > 100 {
 		original := limit
 		limit = 20
-		logger.Debug("ListDocuments: adjusted limit",
+		logger.Debug("adjusted limit",
 			slog.Int("original", original),
 			slog.Int("adjusted", limit))
 	}
@@ -138,20 +140,20 @@ func (h *DocumentHandler) ListDocuments(w http.ResponseWriter, r *http.Request) 
 	if offset < 0 {
 		original := offset
 		offset = 0
-		logger.Debug("ListDocuments: adjusted offset",
+		logger.Debug("adjusted offset",
 			slog.Int("original", original),
 			slog.Int("adjusted", offset))
 	}
 	logger = logger.With(slog.Int("limit", limit), slog.Int("offset", offset))
-	logger.Debug("ListDocuments: parameters validated")
+	logger.Debug("parameters validated")
 
-	logger.Debug("ListDocuments: calling docService.GetUserDocuments")
+	logger.Debug("calling docService.GetUserDocuments")
 	docs, err := h.docService.GetUserDocuments(
 		r.Context(), userID, limit, offset,
 	)
 	if err != nil {
 		logger.Error(
-			"ListDocuments: failed to fetch documents", slog.Any("error", err),
+			"failed to fetch documents", slog.Any("error", err),
 		)
 		http.Error(
 			w, "Failed to fetch documents", http.StatusInternalServerError,
@@ -164,22 +166,22 @@ func (h *DocumentHandler) ListDocuments(w http.ResponseWriter, r *http.Request) 
 		response[i] = mapDocumentToResponse(doc)
 	}
 	logger.Debug(
-		"ListDocuments: successfully retrieved documents",
+		"successfully retrieved documents",
 		slog.Int("count", len(docs)),
 	)
 
 	w.Header().Set("Content-Type", "application/json")
-	logger.Debug("ListDocuments: encoding response")
+	logger.Debug("encoding response")
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		logger.Error(
-			"ListDocuments: failed to encode response", slog.Any("error", err),
+			"failed to encode response", slog.Any("error", err),
 		)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	logger.Info(
-		"ListDocuments: completed",
+		"documents get list completed",
 		slog.Duration("duration", time.Since(start)),
 	)
 }
@@ -208,7 +210,7 @@ func (h *DocumentHandler) DeleteDocument(
 
 	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
 	if !ok {
-		logger.Warn("DeleteDocument: unauthorized - userID missing in context")
+		logger.Warn("unauthorized - userID missing in context")
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
@@ -216,14 +218,14 @@ func (h *DocumentHandler) DeleteDocument(
 
 	id := chi.URLParam(r, "id")
 	if id == "" {
-		logger.Warn("DeleteDocument: invalid document ID (empty)")
+		logger.Warn("invalid document ID (empty)")
 		http.Error(w, "Invalid document ID", http.StatusBadRequest)
 		return
 	}
 	logger = logger.With(slog.String("document_id", id))
-	logger.Debug("DeleteDocument: parameters validated")
+	logger.Debug("parameters validated")
 
-	logger.Debug("DeleteDocument: calling docService.DeleteDocument")
+	logger.Debug("calling docService.DeleteDocument")
 	if err := h.docService.DeleteDocument(
 		r.Context(), id, userID,
 	); err != nil {
@@ -231,7 +233,7 @@ func (h *DocumentHandler) DeleteDocument(
 			http.Error(w, "Document not found", http.StatusNotFound)
 		} else {
 			logger.Error(
-				"DeleteDocument: failed to delete document",
+				"failed to delete document",
 				slog.Any("error", err),
 			)
 			http.Error(
@@ -242,7 +244,7 @@ func (h *DocumentHandler) DeleteDocument(
 	}
 
 	logger.Info(
-		"DeleteDocument: document deleted successfully",
+		"document deleted successfully",
 		slog.Duration("duration", time.Since(start)),
 	)
 	w.WriteHeader(http.StatusNoContent)
@@ -258,4 +260,127 @@ func mapDocumentToResponse(doc *domain.Document) models.DocumentResponse {
 		Category:  doc.Category,
 		CreatedAt: doc.CreatedAt,
 	}
+}
+
+// DownloadDocument скачивает файл документа по ID.
+// @Summary      Скачать документ
+// @Description  Возвращает PDF-файл документа (редирект на временную ссылку MinIO)
+// @Tags         documents
+// @Produce      application/pdf
+// @Param        id path string true "ID документа"
+// @Success      302  {string}  string "Redirect to presigned URL"
+// @Failure      400  {string}  string "Invalid document ID"
+// @Failure      401  {string}  string "Unauthorized"
+// @Failure      404  {string}  string "Document not found"
+// @Failure      500  {string}  string "Internal server error"
+// @Security     BearerAuth
+// @Router       /documents/{id}/download [get]
+func (h *DocumentHandler) DownloadDocument(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	logger := h.logger.With(
+		slog.String("method", r.Method), slog.String("path", r.URL.Path),
+	)
+	logger.Debug("DownloadDocument request started")
+
+	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok {
+		logger.Warn("unauthorized - userID missing in context")
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	logger = logger.With(slog.String("user_id", userID))
+
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		logger.Warn("invalid document ID (empty)")
+		http.Error(w, "Invalid document ID", http.StatusBadRequest)
+		return
+	}
+	logger = logger.With(slog.String("document_id", id))
+
+	presignedURL, _, err := h.docService.GetDocumentDownloadURL(
+		r.Context(), id, userID,
+	)
+	if err != nil {
+		logger.Error("failed to get download URL", slog.Any("error", err))
+		http.Error(
+			w, "Document not found or inaccessible", http.StatusNotFound,
+		)
+		return
+	}
+
+	logger.Debug(
+		"redirecting to presigned URL", slog.String("url", presignedURL),
+	)
+	http.Redirect(w, r, presignedURL, http.StatusFound)
+
+	logger.Info(
+		"document download completed",
+		slog.Duration("duration", time.Since(start)),
+	)
+}
+
+// GetDocumentDownloadURL возвращает временную ссылку для скачивания документа.
+// @Summary      Получить ссылку на скачивание
+// @Description  Возвращает presigned URL для доступа к файлу документа.
+// @Tags         documents
+// @Produce      json
+// @Param        id path string true "ID документа"
+// @Success      200 {object} models.DocumentDownloadURLResponse
+// @Failure      401 {string} string "Unauthorized"
+// @Failure      404 {string} string "Document not found"
+// @Security     BearerAuth
+// @Router       /documents/{id}/download-url [get]
+func (h *DocumentHandler) GetDocumentDownloadURL(
+	w http.ResponseWriter, r *http.Request,
+) {
+	start := time.Now()
+	logger := h.logger.With(
+		slog.String("method", r.Method), slog.String("path", r.URL.Path),
+	)
+	logger.Debug("DownloadDocument request started")
+
+	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok {
+		logger.Warn("unauthorized - userID missing in context")
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	logger = logger.With(slog.String("user_id", userID))
+
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		logger.Warn("invalid document ID (empty)")
+		http.Error(w, "Invalid document ID", http.StatusBadRequest)
+		return
+	}
+	logger = logger.With(slog.String("document_id", id))
+
+	presignedURL, expiresIn, err := h.docService.GetDocumentDownloadURL(
+		r.Context(), id, userID,
+	)
+	if err != nil {
+		logger.Error("failed to get download URL", slog.Any("error", err))
+		http.Error(
+			w, "Document not found or inaccessible", http.StatusNotFound,
+		)
+		return
+	}
+
+	resp := models.DocumentDownloadURLResponse{
+		URL:       presignedURL,
+		ExpiresIn: int64(expiresIn.Seconds()),
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		h.logger.Error("failed to encode response", "error", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	}
+
+	logger.Info(
+		"document download url completed",
+		slog.Duration("duration", time.Since(start)),
+	)
 }

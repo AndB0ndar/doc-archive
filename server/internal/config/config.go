@@ -11,11 +11,11 @@ import (
 type Config struct {
 	Port        int
 	Env         string
-	UploadDir   string
 	EmbedderURL string
 	RerankerURL string
 	ReaderURL   string
 	Database    DatabaseConfig
+	MinIO       MinIOConfig
 	Search      SearchConfig
 	Chunk       ChunkConfig
 	JWTSecret   string
@@ -46,6 +46,13 @@ type DatabaseConfig struct {
 	MaxConnIdleTime   time.Duration
 	HealthCheckPeriod time.Duration
 }
+type MinIOConfig struct {
+	URL       string
+	AccessKey string
+	SecretKey string
+	Bucket    string
+	UseSSL    bool
+}
 
 func Load() (*Config, error) {
 	_ = godotenv.Load()
@@ -57,7 +64,6 @@ func Load() (*Config, error) {
 
 	return &Config{
 		Port:        port,
-		UploadDir:   getEnv("UPLOAD_DIR", "uploads"),
 		EmbedderURL: getEnv("EMBEDDER_URL", "http://embedder:5001"),
 		RerankerURL: getEnv("RERANKER_URL", "http://embedder:5001"),
 		ReaderURL:   getEnv("READER_URL", "http://embedder:5001"),
@@ -84,6 +90,13 @@ func Load() (*Config, error) {
 			MaxConnLifetime:   30 * time.Minute,
 			MaxConnIdleTime:   5 * time.Minute,
 			HealthCheckPeriod: 1 * time.Minute,
+		},
+		MinIO: MinIOConfig{
+			URL:       getEnv("MINIO_URL", "localhost:9000"),
+			AccessKey: getEnv("MINIO_ACCESS_KEY", "minioadmin"),
+			SecretKey: getEnv("MINIO_SECRET_KEY", "minioadmin"),
+			Bucket:    getEnv("MINIO_BUCKET", "pdf-documents"),
+			UseSSL:    getEnv("MINIO_USE_SSL", "false") == "true",
 		},
 		RedisURL: getEnv("REDIS_URL", "redis:6379"),
 	}, nil
