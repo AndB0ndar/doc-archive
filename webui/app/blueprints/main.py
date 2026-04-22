@@ -155,7 +155,6 @@ def delete_document(doc_id):
       500:
         description: Deletion failed due to API error
     """
-    logger.debug(f"Session in DELETE: {dict(session)}")
     result, err = call_go_api_auth(f'/documents/{doc_id}', method='DELETE')
     if err:
         logger.error(f"Failed to delete document {doc_id}: {err}")
