@@ -4,3 +4,5 @@ flasgger
 gunicorn
 redis
 requests
+prometheus-flask-exporter
+python-json-logger

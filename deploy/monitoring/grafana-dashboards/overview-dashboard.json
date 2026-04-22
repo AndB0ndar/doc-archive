@@ -1,0 +1,53 @@
+{
+  "title": "PDF Search - Overview",
+  "uid": "pdf-search-overview",
+  "panels": [
+    {
+      "title": "Total Requests (API + Embedder)",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total[5m])) or sum(rate(flask_http_request_total[5m]))",
+          "legendFormat": "Total RPS"
+        }
+      ],
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0}
+    },
+    {
+      "title": "Error Rate",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{status=~\"5..\"}[5m])) / sum(rate(http_requests_total[5m]))",
+          "legendFormat": "Go API 5xx"
+        },
+        {
+          "expr": "sum(rate(flask_http_request_total{status=~\"5..\"}[5m])) / sum(rate(flask_http_request_total[5m]))",
+          "legendFormat": "Embedder 5xx"
+        }
+      ],
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 8}
+    },
+    {
+      "title": "Queue Size (Redis)",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "redis_queue_length",
+          "legendFormat": "Pending tasks"
+        }
+      ],
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}
+    },
+    {
+      "title": "Database Connections",
+      "type": "gauge",
+      "targets": [
+        {
+          "expr": "pg_stat_database_numbackends"
+        }
+      ],
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}
+    }
+  ]
+}

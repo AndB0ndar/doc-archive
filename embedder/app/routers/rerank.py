@@ -1,14 +1,13 @@
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
+from app.logging_config import get_logger
 from app.services.model_manager import get_rerank_model
 from app.schemas import RerankRequest, RerankResponse
 
 
 router = APIRouter(tags=["reranking"])
-
-logger = logging.getLogger(__name__)
 
 
 @router.post(
@@ -30,12 +29,13 @@ logger = logging.getLogger(__name__)
         500: {"description": "Internal error"}
     }
 )
-async def rerank(request: RerankRequest):
+async def rerank(request: Request, payload: RerankRequest):
+    logger = get_logger(request)
     model = get_rerank_model()
     if model is None:
         raise HTTPException(status_code=503, detail="Reranker not configured")
     try:
-        pairs = [[request.query, text] for text in request.texts]
+        pairs = [[payload.query, text] for text in payload.texts]
         scores = model.predict(pairs).tolist()
         return RerankResponse(scores=scores)
     except Exception as e:

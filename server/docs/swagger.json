@@ -1,8 +1,19 @@
 {
     "swagger": "2.0",
     "info": {
-        "contact": {}
+        "description": "API для интеллектуального поиска по документам.",
+        "title": "PDF Search API",
+        "contact": {
+            "name": "arbon"
+        },
+        "license": {
+            "name": "MIT",
+            "url": "https://opensource.org/licenses/MIT"
+        },
+        "version": "1.0"
     },
+    "host": "localhost:8080",
+    "basePath": "/",
     "paths": {
         "/documents": {
             "get": {
@@ -39,7 +50,7 @@
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/models.Document"
+                                "$ref": "#/definitions/models.DocumentResponse"
                             }
                         }
                     },
@@ -86,7 +97,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.Document"
+                            "$ref": "#/definitions/models.DocumentResponse"
                         }
                     },
                     "400": {
@@ -194,19 +205,13 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/models.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/models.ErrorResponse"
                         }
                     }
                 }
@@ -246,19 +251,13 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/models.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/models.ErrorResponse"
                         }
                     }
                 }
@@ -289,7 +288,7 @@
                     },
                     {
                         "type": "string",
-                        "description": "Тип поиска: text (по умолчанию) или vector",
+                        "description": "Тип поиска: text (по умолчанию) или vector/semantic",
                         "name": "type",
                         "in": "query"
                     },
@@ -304,28 +303,19 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/models.ChunkSearchResponse"
-                            }
+                            "$ref": "#/definitions/models.SearchResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/models.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/models.ErrorResponse"
                         }
                     }
                 }
@@ -371,7 +361,7 @@
                         "in": "formData"
                     },
                     {
-                        "type": "integer",
+                        "type": "string",
                         "description": "Год публикации",
                         "name": "year",
                         "in": "formData"
@@ -387,26 +377,19 @@
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/models.UploadResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/models.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/models.ErrorResponse"
                         }
                     }
                 }
@@ -421,47 +404,11 @@
                     "type": "string"
                 },
                 "user": {
-                    "$ref": "#/definitions/models.User"
+                    "$ref": "#/definitions/models.UserResponse"
                 }
             }
         },
-        "models.ChunkSearchResponse": {
-            "type": "object",
-            "properties": {
-                "authors": {
-                    "type": "string"
-                },
-                "category": {
-                    "type": "string"
-                },
-                "chunk_id": {
-                    "type": "integer"
-                },
-                "chunk_index": {
-                    "type": "integer"
-                },
-                "content": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "document_id": {
-                    "type": "integer"
-                },
-                "similarity": {
-                    "description": "from 0 to 1",
-                    "type": "number"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "year": {
-                    "type": "integer"
-                }
-            }
-        },
-        "models.Document": {
+        "models.DocumentResponse": {
             "type": "object",
             "properties": {
                 "authors": {
@@ -476,25 +423,31 @@
                 "file_path": {
                     "type": "string"
                 },
-                "file_size": {
-                    "type": "integer"
-                },
                 "id": {
-                    "type": "integer"
+                    "type": "string"
                 },
                 "title": {
                     "type": "string"
-                },
-                "user_id": {
-                    "type": "integer"
                 },
                 "year": {
                     "type": "integer"
                 }
             }
         },
+        "models.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                }
+            }
+        },
         "models.LoginRequest": {
             "type": "object",
+            "required": [
+                "email",
+                "password"
+            ],
             "properties": {
                 "email": {
                     "type": "string"
@@ -506,28 +459,80 @@
         },
         "models.RegisterRequest": {
             "type": "object",
+            "required": [
+                "email",
+                "password"
+            ],
             "properties": {
                 "email": {
                     "type": "string"
                 },
                 "password": {
+                    "type": "string",
+                    "minLength": 8
+                }
+            }
+        },
+        "models.SearchResponse": {
+            "type": "object",
+            "properties": {
+                "results": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.SearchResultItem"
+                    }
+                }
+            }
+        },
+        "models.SearchResultItem": {
+            "type": "object",
+            "properties": {
+                "answer": {
+                    "type": "string"
+                },
+                "chunk_id": {
+                    "type": "string"
+                },
+                "confidence": {
+                    "type": "number"
+                },
+                "content": {
+                    "type": "string"
+                },
+                "document_id": {
                     "type": "string"
                 }
             }
         },
-        "models.User": {
+        "models.UploadResponse": {
             "type": "object",
             "properties": {
-                "created_at": {
+                "document_id": {
                     "type": "string"
                 },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.UserResponse": {
+            "type": "object",
+            "properties": {
                 "email": {
                     "type": "string"
                 },
                 "id": {
-                    "type": "integer"
+                    "type": "string"
                 }
             }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "description": "Type \"Bearer \" followed by a space and token",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
         }
     }
 }

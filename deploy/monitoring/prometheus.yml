@@ -1,0 +1,19 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'go-api'
+    static_configs:
+      - targets: ['api:8080']
+    metrics_path: '/metrics'
+
+  - job_name: 'python-embedder'
+    static_configs:
+      - targets: ['embedder:5000']
+    metrics_path: '/metrics'
+
+  - job_name: 'python-web-ui'
+    static_configs:
+      - targets: ['webui:5000']
+    metrics_path: '/metrics'

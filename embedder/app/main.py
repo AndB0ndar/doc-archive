@@ -2,10 +2,12 @@ import logging
 
 from fastapi import FastAPI
 
+from prometheus_fastapi_instrumentator import Instrumentator
+
 from app.config import settings
 from app.lifespan import lifespan
-from app.logging_config import setup_logging
 from app.routers import embed, rerank, qa, health
+from app.logging_config import setup_logging, RequestIDMiddleware
 
 
 setup_logging(level=settings.log_level)
@@ -20,6 +22,15 @@ app = FastAPI(
     redoc_url="/redoc",        # ReDoc documentation (default)
     openapi_url="/openapi.json" # OpenAPI schema (default)
 )
+
+
+app.add_middleware(RequestIDMiddleware)
+
+
+instinstrumentator = Instrumentator().instrument(app).expose(
+    app, endpoint="/metrics"
+)
+#include_in_schema=False
 
 
 app.include_router(embed)

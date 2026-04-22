@@ -1,36 +1,13 @@
+basePath: /
 definitions:
   models.AuthResponse:
     properties:
       token:
         type: string
       user:
-        $ref: '#/definitions/models.User'
+        $ref: '#/definitions/models.UserResponse'
     type: object
-  models.ChunkSearchResponse:
-    properties:
-      authors:
-        type: string
-      category:
-        type: string
-      chunk_id:
-        type: integer
-      chunk_index:
-        type: integer
-      content:
-        type: string
-      created_at:
-        type: string
-      document_id:
-        type: integer
-      similarity:
-        description: from 0 to 1
-        type: number
-      title:
-        type: string
-      year:
-        type: integer
-    type: object
-  models.Document:
+  models.DocumentResponse:
     properties:
       authors:
         type: string
@@ -40,16 +17,17 @@ definitions:
         type: string
       file_path:
         type: string
-      file_size:
-        type: integer
       id:
-        type: integer
+        type: string
       title:
         type: string
-      user_id:
-        type: integer
       year:
         type: integer
+    type: object
+  models.ErrorResponse:
+    properties:
+      error:
+        type: string
     type: object
   models.LoginRequest:
     properties:
@@ -57,25 +35,65 @@ definitions:
         type: string
       password:
         type: string
+    required:
+    - email
+    - password
     type: object
   models.RegisterRequest:
     properties:
       email:
         type: string
       password:
+        minLength: 8
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  models.SearchResponse:
+    properties:
+      results:
+        items:
+          $ref: '#/definitions/models.SearchResultItem'
+        type: array
+    type: object
+  models.SearchResultItem:
+    properties:
+      answer:
+        type: string
+      chunk_id:
+        type: string
+      confidence:
+        type: number
+      content:
+        type: string
+      document_id:
         type: string
     type: object
-  models.User:
+  models.UploadResponse:
     properties:
-      created_at:
+      document_id:
         type: string
+      status:
+        type: string
+    type: object
+  models.UserResponse:
+    properties:
       email:
         type: string
       id:
-        type: integer
+        type: string
     type: object
+host: localhost:8080
 info:
-  contact: {}
+  contact:
+    name: arbon
+  description: API для интеллектуального поиска по документам.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  title: PDF Search API
+  version: "1.0"
 paths:
   /documents:
     get:
@@ -97,7 +115,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/models.Document'
+              $ref: '#/definitions/models.DocumentResponse'
             type: array
         "401":
           description: Unauthorized
@@ -159,7 +177,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.Document'
+            $ref: '#/definitions/models.DocumentResponse'
         "400":
           description: Invalid document ID
           schema:
@@ -199,15 +217,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/models.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/models.ErrorResponse'
       summary: Вход в систему
       tags:
       - auth
@@ -233,15 +247,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/models.ErrorResponse'
         "409":
           description: Conflict
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/models.ErrorResponse'
       summary: Регистрация пользователя
       tags:
       - auth
@@ -254,7 +264,7 @@ paths:
         name: q
         required: true
         type: string
-      - description: 'Тип поиска: text (по умолчанию) или vector'
+      - description: 'Тип поиска: text (по умолчанию) или vector/semantic'
         in: query
         name: type
         type: string
@@ -268,21 +278,15 @@ paths:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/models.ChunkSearchResponse'
-            type: array
+            $ref: '#/definitions/models.SearchResponse'
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/models.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/models.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Поиск документов
@@ -311,7 +315,7 @@ paths:
       - description: Год публикации
         in: formData
         name: year
-        type: integer
+        type: string
       - description: Категория
         in: formData
         name: category
@@ -322,23 +326,24 @@ paths:
         "201":
           description: Created
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/models.UploadResponse'
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/models.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/models.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Загрузка PDF
       tags:
       - documents
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer " followed by a space and token
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

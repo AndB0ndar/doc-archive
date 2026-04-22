@@ -1,0 +1,38 @@
+{
+  "title": "Python Embedder Metrics",
+  "uid": "embedder-metrics",
+  "panels": [
+    {
+      "title": "Request Rate",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "rate(flask_http_request_total[5m])",
+          "legendFormat": "{{method}} {{endpoint}} {{status}}"
+        }
+      ],
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+    },
+    {
+      "title": "Request Duration",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(flask_http_request_duration_seconds_bucket[5m]))",
+          "legendFormat": "{{method}} {{endpoint}}"
+        }
+      ],
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+    },
+    {
+      "title": "Active Requests",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "flask_http_request_in_progress"
+        }
+      ],
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 8}
+    }
+  ]
+}

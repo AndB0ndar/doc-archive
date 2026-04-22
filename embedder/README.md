@@ -52,11 +52,11 @@ input validation, and high performance.
 Start the server with Uvicorn:
 
 ```bash
-uvicorn app.main:app --host 0.0.0.0 --port 5001 --reload
+uvicorn app.main:app --host 0.0.0.0 --port 5000 --reload
 ```
 
-The service will be available at `http://localhost:5001`.  
-API documentation: [http://localhost:5001/docs](http://localhost:5001/docs)
+The service will be available at `http://localhost:5000`.  
+API documentation: [http://localhost:5000/docs](http://localhost:5000/docs)
 
 ---
 
@@ -73,7 +73,7 @@ docker build -t embedding-service .
 ### Run the Container
 
 ```bash
-docker run -p 5001:5001 \
+docker run -p 5000:5000 \
   -e EMBED_MODEL_NAME="multi-qa-MiniLM-L6-cos-v1" \
   -e RERANK_MODEL_NAME="cross-encoder/ms-marco-MiniLM-L-6-v2" \
   -e READER_MODEL_NAME="distilbert-base-cased-distilled-squad" \
@@ -81,7 +81,7 @@ docker run -p 5001:5001 \
   embedding-service
 ```
 
-- `-p 5001:5001` maps the container's port 5001 to your host.  
+- `-p 5000:5000` maps the container's port 5000 to your host.  
 - Environment variables (see [Configuration](#configuration)) can be passed with `-e`.  
 - Omit `RERANK_MODEL_NAME` or `READER_MODEL_NAME` to disable those features.
 
@@ -97,7 +97,7 @@ The service is configured through environment variables:
 | `RERANK_MODEL_NAME`   | (not set)                       | Cross‑encoder model for reranking (e.g., `cross-encoder/ms-marco-MiniLM-L-6-v2`). If not set, `/rerank` will be unavailable. |
 | `READER_MODEL_NAME`   | (not set)                       | Hugging Face extractive QA model (e.g., `distilbert-base-cased-distilled-squad`). If not set, `/extract_answer` will be unavailable. |
 | `MAX_TEXT_LENGTH`     | `5000`                          | Maximum number of characters per input text (truncated to this limit). |
-| `PORT`                | `5001`                          | Port the server listens on.                         |
+| `PORT`                | `5000`                          | Port the server listens on.                         |
 
 ---
 
@@ -149,7 +149,7 @@ Generate dense vector embeddings for a list of texts.
 
 **Example with `curl`:**
 ```bash
-curl -X POST http://localhost:5001/embed \
+curl -X POST http://localhost:5000/embed \
   -H "Content-Type: application/json" \
   -d '{"texts": ["What is Go?", "Explain concurrency in Go."]}'
 ```

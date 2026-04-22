@@ -1,0 +1,12 @@
+apiVersion: 1
+
+providers:
+  - name: 'doc-archive'
+    orgId: 1
+    folder: 'DOC Search Dashboards'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    options:
+      path: /etc/grafana/dashboards
+

@@ -40,8 +40,8 @@ func NewUploadHandler(
 // @Param        year formData string false "Год публикации"
 // @Param        category formData string false "Категория"
 // @Success      201  {object}  models.UploadResponse
-// @Failure      400  {object}  map[string]string
-// @Failure      401  {object}  map[string]string
+// @Failure      400  {object}  models.ErrorResponse
+// @Failure      401  {object}  models.ErrorResponse
 // @Security     BearerAuth
 // @Router       /upload [post]
 func (h *UploadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {

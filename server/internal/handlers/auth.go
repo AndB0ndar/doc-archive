@@ -32,8 +32,8 @@ func NewAuthHandler(
 // @Produce      json
 // @Param        request body models.RegisterRequest true "Данные для регистрации"
 // @Success      201  {object}  models.AuthResponse
-// @Failure      400  {object}  map[string]string
-// @Failure      409  {object}  map[string]string
+// @Failure      400  {object}  models.ErrorResponse
+// @Failure      409  {object}  models.ErrorResponse
 // @Router       /register [post]
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
@@ -105,8 +105,8 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 // @Produce      json
 // @Param        request body models.LoginRequest true "Учётные данные"
 // @Success      200  {object}  models.AuthResponse
-// @Failure      400  {object}  map[string]string
-// @Failure      401  {object}  map[string]string
+// @Failure      400  {object}  models.ErrorResponse
+// @Failure      401  {object}  models.ErrorResponse
 // @Router       /login [post]
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()

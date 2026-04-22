@@ -244,10 +244,13 @@ func (s *Service) applyReader(
 	query string,
 	results []domain.SearchResult,
 ) []domain.SearchResult {
+	/*
 	topK := 3
 	if topK > len(results) {
 		topK = len(results)
 	}
+	*/
+	topK := len(results)
 	for i := 0; i < topK; i++ {
 		ans, err := s.readerClient.Answer(query, results[i].Content)
 		if err != nil {

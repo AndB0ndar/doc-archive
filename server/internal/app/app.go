@@ -11,8 +11,9 @@ import (
 
 	"github.com/AndB0ndar/doc-archive/internal/config"
 	"github.com/AndB0ndar/doc-archive/internal/db"
-	"github.com/AndB0ndar/doc-archive/internal/handlers"
 	"github.com/AndB0ndar/doc-archive/internal/logger"
+	"github.com/AndB0ndar/doc-archive/internal/metrics"
+	"github.com/AndB0ndar/doc-archive/internal/handlers"
 	"github.com/AndB0ndar/doc-archive/internal/repository"
 	"github.com/AndB0ndar/doc-archive/internal/server"
 
@@ -41,6 +42,8 @@ func (a *App) Run() error {
 	if a.config.JWTSecret == "default-secret-change-me" && a.config.Env == "production" {
 		log.Warn("JWT_SECRET is set to default value, please change it in production")
 	}
+
+	metrics.Init()
 
 	// DB
 	pool, err := db.NewPool(a.config.Database)

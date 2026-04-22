@@ -48,3 +48,8 @@ type SearchResultItem struct {
 type SearchResponse struct {
 	Results []SearchResultItem `json:"results"`
 }
+
+type ErrorResponse struct {
+    Error string `json:"error"`
+}
+

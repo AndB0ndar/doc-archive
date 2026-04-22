@@ -1,15 +1,14 @@
 import os
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
+from app.logging_config import get_logger
 from app.services.model_manager import get_embed_model
 from app.schemas import EmbedRequest, EmbedResponse
 
 
 router = APIRouter(tags=["embeddings"])
-
-logger = logging.getLogger(__name__)
 
 
 @router.post(
@@ -33,13 +32,15 @@ logger = logging.getLogger(__name__)
         500: {"description": "Internal error"}
     }
 )
-async def embed(request: EmbedRequest):
+async def embed(request: Request, payload: EmbedRequest):
+    logger = get_logger(request)
+
     model = get_embed_model()
     if model is None:
         raise HTTPException(status_code=503, detail="Embed model not loaded")
     try:
         max_length = int(os.getenv("MAX_TEXT_LENGTH", 5000))
-        truncated = [text[:max_length] for text in request.texts]
+        truncated = [text[:max_length] for text in payload.texts]
         embeddings = model.encode(truncated).tolist()
         return EmbedResponse(embeddings=embeddings)
     except Exception as e:

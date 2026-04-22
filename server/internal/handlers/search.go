@@ -35,8 +35,8 @@ func NewSearchHandler(
 // @Param        type query string false "Тип поиска: text (по умолчанию) или vector/semantic"
 // @Param        limit query int false "Максимальное количество результатов (макс 100)"
 // @Success      200  {object}  models.SearchResponse
-// @Failure      400  {object}  map[string]string
-// @Failure      401  {object}  map[string]string
+// @Failure      400  {object}  models.ErrorResponse
+// @Failure      401  {object}  models.ErrorResponse
 // @Security     BearerAuth
 // @Router       /search [get]
 func (h *SearchHandler) Search(w http.ResponseWriter, r *http.Request) {

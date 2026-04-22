@@ -1,14 +1,13 @@
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
+from app.logging_config import get_logger
 from app.config import settings
 from app.schemas import HealthResponse
 
 
 router = APIRouter(tags=["health"])
-
-logger = logging.getLogger(__name__)
 
 
 @router.get(
@@ -33,7 +32,8 @@ logger = logging.getLogger(__name__)
         }
     }
 )
-async def health():
+async def health(request: Request):
+    logger = get_logger(request)
     return HealthResponse(
         status="ok",
         embed_model=settings.embed_model_name,

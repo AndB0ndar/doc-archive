@@ -1,0 +1,37 @@
+{
+  "title": "PDF Search - Logs Dashboard",
+  "uid": "pdf-search-logs",
+  "panels": [
+    {
+      "title": "Log Stream",
+      "type": "logs",
+      "targets": [
+        {
+          "expr": "{service=~\"$service\"} |~ \"$pattern\"",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {"h": 20, "w": 24, "x": 0, "y": 0}
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "type": "query",
+        "datasource": "Loki",
+        "query": "label_values(service)",
+        "includeAll": true,
+        "multi": true,
+        "current": {"value": "api|embedder"}
+      },
+      {
+        "name": "pattern",
+        "type": "textbox",
+        "label": "Log pattern (regex)",
+        "defaultValue": "",
+        "current": {"value": ""}
+      }
+    ]
+  }
+}

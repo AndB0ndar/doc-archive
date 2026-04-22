@@ -1,14 +1,13 @@
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
+from app.logging_config import get_logger
 from app.services.model_manager import get_reader_pipeline
 from app.schemas import ExtractAnswerRequest, ExtractAnswerResponse
 
 
 router = APIRouter(tags=["question-answering"])
-
-logger = logging.getLogger(__name__)
 
 
 @router.post(
@@ -35,12 +34,13 @@ logger = logging.getLogger(__name__)
         500: {"description": "Internal error"}
     }
 )
-async def extract_answer(request: ExtractAnswerRequest):
+async def extract_answer(request: Request, payload: ExtractAnswerRequest):
+    logger = get_logger(request)
     pipeline = get_reader_pipeline()
     if pipeline is None:
         raise HTTPException(status_code=503, detail="Reader not configured")
     try:
-        result = pipeline(question=request.question, context=request.context)
+        result = pipeline(question=payload.question, context=payload.context)
         return ExtractAnswerResponse(
             answer=result["answer"],
             confidence=result["score"],

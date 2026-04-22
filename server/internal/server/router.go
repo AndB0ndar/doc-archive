@@ -7,6 +7,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
+    "github.com/prometheus/client_golang/prometheus/promhttp"
+
 	_ "github.com/AndB0ndar/doc-archive/docs"
 	httpSwagger "github.com/swaggo/http-swagger"
 
@@ -14,24 +16,6 @@ import (
 	mdwr "github.com/AndB0ndar/doc-archive/internal/middleware"
 )
 
-// @title           PDF Search API
-// @version         1.0
-// @description     API для интеллектуального поиска по документам.
-// @termsOfService  http://example.com/terms/
-
-// @contact.name   API Support
-// @contact.url    http://example.com/support
-// @contact.email  support@example.com
-
-// @license.name  MIT
-// @license.url   https://opensource.org/licenses/MIT
-
-// @host      localhost:8080
-// @BasePath  /
-
-// @securityDefinitions.apikey BearerAuth
-// @in header
-// @name Authorization
 func NewRouter(
 	authHandler *handlers.AuthHandler,
 	uploadHandler *handlers.UploadHandler,
@@ -57,6 +41,7 @@ func NewRouter(
 
 	r.Group(func(r chi.Router) {
 		r.Use(mdwr.AuthMiddleware(JWTSecret))
+		r.Use(mdwr.MetricsMiddleware())
 
 		r.Post("/upload", uploadHandler.ServeHTTP)
 
@@ -72,6 +57,8 @@ func NewRouter(
 	r.Get("/swagger/*", httpSwagger.Handler(
 		httpSwagger.URL("/swagger/doc.json"),
 	))
+
+	r.Handle("/metrics", promhttp.Handler())
 
 	return r
 }

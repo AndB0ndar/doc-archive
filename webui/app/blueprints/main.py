@@ -236,8 +236,13 @@ def search():
     if err:
         logger.error(f"Search error: {err}")
         return f"Search error: {err}", 500
+    answers = results["results"]
+    
+    for answer in answers:
+        doc, err = call_go_api_auth(f'/documents/{answer["document_id"]}')
+        answer['document'] = None if err or doc is None else doc
 
     return render_template(
-        'schema/search_results.html', results=results["results"]
+        'schema/search_results.html', results=answers
     )
 
