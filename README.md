@@ -29,12 +29,12 @@ flowchart LR
 (:5005)"]
     GoAPI["Go API Gateway
 (:8080)"]
-    Postgres["(PostgreSQL + pgvector)"]
-    Redis["(Redis
-кэш сессий/документов)"]
+    Postgres["PostgreSQL + pgvector"]
+    Redis["Redis
+кэш сессий/документов"]
     RAG["Python FastAPI RAG
 (:5001)"]
-    MinIO["(MinIO\nобъектное хранилище)"]
+    MinIO["MinIO\nобъектное хранилище"]
 
     Browser <-->|HTTP/HTML| WebUI
     WebUI -->|HTTP JSON| GoAPI
