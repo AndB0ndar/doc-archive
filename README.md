@@ -23,13 +23,18 @@
 
 ```mermaid
 flowchart LR
-    Browser["Браузер<br>(htmx + PDF.js)"]
-    WebUI["Flask Web UI<br>(порт 5005)"]
-    GoAPI["Go API<br>(порт 8080)"]
-    Postgres[("PostgreSQL + pgvector")]
-    Redis[(Redis<br>кэш сессий/документов")]
-    Embedder["Python Embedder<br>(порт 5001)"]
-    MinIO[("MinIO<br>объектное хранилище")]
+    Browser["Браузер
+(htmx + PDF.js)"]
+    WebUI["Flask Web UI
+(:5005)"]
+    API-Gateway["Go API Gateway
+(:8080)"]
+    Postgres["(PostgreSQL + pgvector)"]
+    Redis["(Redis
+кэш сессий/документов)"]
+    RAG["Python FastAPI RAG
+(:5001)"]
+    MinIO["(MinIO\nобъектное хранилище)"]
 
     Browser <-->|HTTP/HTML| WebUI
     WebUI -->|HTTP JSON| GoAPI
