@@ -27,7 +27,7 @@ flowchart LR
 (htmx + PDF.js)"]
     WebUI["Flask Web UI
 (:5005)"]
-    API-Gateway["Go API Gateway
+    GoAPI["Go API Gateway
 (:8080)"]
     Postgres["(PostgreSQL + pgvector)"]
     Redis["(Redis
@@ -40,7 +40,7 @@ flowchart LR
     WebUI -->|HTTP JSON| GoAPI
     GoAPI -->|SQL| Postgres
     GoAPI -->|кэш| Redis
-    GoAPI -->|gRPC/HTTP| Embedder
+    GoAPI -->|gRPC/HTTP| RAG
     GoAPI -->|presigned URL| MinIO
     WebUI -->|загрузка файлов| GoAPI
     Browser -->|прямой запрос PDF| MinIO
