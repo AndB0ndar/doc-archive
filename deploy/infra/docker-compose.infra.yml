@@ -1,0 +1,88 @@
+name: doc-archive-infra
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg15
+    container_name: postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pass}
+      POSTGRES_DB: ${POSTGRES_DB:-docdb}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql
+      - ../../migrations:/docker-entrypoint-initdb.d
+    command: postgres -c shared_preload_libraries=vector
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d docdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - doc-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    restart: unless-stopped
+    networks:
+      - doc-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD:-minioadmin}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - miniodata:/data
+    networks:
+      - doc-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    volumes:
+      - ./cors-config.json:/cors-config.json
+      - ./lifecycle.json:/lifecycle.json
+    entrypoint: >
+      /bin/sh -c "
+        mc alias set myminio http://minio:9000 ${MINIO_USER:-minioadmin} ${MINIO_PASSWORD:-minioadmin};
+        mc mb myminio/${MINIO_BUCKET:-pdf-documents} --ignore-existing;
+        echo 'Bucket ${MINIO_BUCKET:-pdf-documents} created successfully';
+
+        mc ilm import myminio/pdf-documents < lifecycle.json
+        echo 'Lifecycle policy applied: expire objects after 7 days';
+
+        mc cors set myminio/$$MINIO_BUCKET /cors-config.json;
+        echo 'CORS policy applied successfully.';
+        exit 0;
+      "
+
+volumes:
+  pgdata:
+  redisdata:
+  miniodata:
+
