@@ -8,6 +8,7 @@ from flask import (
     request,
     redirect,
     url_for,
+    jsonify,
     abort,
     current_app,
     make_response,
@@ -21,6 +22,20 @@ from app.decorators import login_required
 bp = Blueprint('main', __name__)
 
 logger = logging.getLogger(__name__)
+
+
+@bp.route('/about')
+def about():
+    """
+    About project page.
+    ---
+    tags:
+      - Views
+    responses:
+      200:
+        description: Renders about.html
+    """
+    return render_template('pages/about.html')
 
 
 @bp.route('/')
@@ -190,33 +205,56 @@ def document_file(doc_id):
     )
 
 
-@bp.route('/documents/<uuid:doc_id>/delete', methods=['DELETE'])
+@bp.route('/documents/<doc_id>/delete', methods=['DELETE'])
 @login_required
 def delete_document(doc_id):
     """
-    Delete a document via Go API.
+    Delete a document via Go API (used by htmx).
+
+    This endpoint expects a DELETE request from the client (e.g., via htmx).
+    On successful deletion, returns 200 with a JSON confirmation.
+    If the Go API call fails, returns 500 with an error message.
+    On the frontend, a redirect to the main page is performed after success.
+
     ---
     tags:
-      - Delete
+      - Documents
     parameters:
       - name: doc_id
         in: path
-        type: integer
+        type: string
         required: true
-        description: Unique document identifier
+        description: UUID of the document to delete
     responses:
-      302:
-        description: Redirect to index after successful deletion
+      200:
+        description: Document successfully deleted
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  example: ok
+      401:
+        description: User not authenticated (JWT required)
+      404:
+        description: Document not found or does not belong to the current user
       500:
-        description: Deletion failed due to API error
+        description: Error occurred while calling the Go API
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                error:
+                  type: string
+                  example: "failed to delete document: internal server error"
     """
-    result, err = call_go_api_auth(f'/documents/{doc_id}', method='DELETE')
+    _, err = call_go_api_auth(f'/documents/{doc_id}', method='DELETE')
     if err:
-        logger.error(f"Failed to delete document {doc_id}: {err}")
-        return f"Delete failed: {err}", 500
-    response = make_response('', 200)
-    response.headers['HX-Redirect'] = url_for('main.index')
-    return response
+        return jsonify({'error': str(err)}), 500
+    return jsonify({'status': 'ok'}), 200
 
 
 @bp.route('/search')
@@ -271,5 +309,63 @@ def search():
 
     return render_template(
         'schema/search_results.html', results=answers
+    )
+
+
+@bp.route('/my-documents')
+@login_required
+def my_documents():
+    """
+    The page is a wrapper, the list is loaded via htmx
+    """
+    return render_template('pages/my_documents.html')
+
+
+@bp.route('/my-documents/list')
+@login_required
+def my_documents_list():
+    """
+    htmx interface: opens access to message pages.
+    ---
+    tags:
+      - htmx file containing
+    parameters:
+      - name: page
+        in: request
+        Type: integer
+        Required: false
+        Default: 1
+      - name: restriction
+        in: request
+        Type: integer
+        Required: false
+        default: 20
+    responses:
+      200:
+        description: HTML fragment with a list of documents and pagination
+        content:
+          text/html:
+            schema:
+              type: string
+    """
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('limit', 10, type=int)
+    offset = (page - 1) * per_page
+
+    resp, err = call_go_api_auth(f'/documents?limit={per_page}&offset={offset}')
+    if err or not resp:
+        resp = []
+        # return '<div class="alert alert-error">Не удалось загрузить документы</div>'
+    
+    documents = resp
+    next_page = page + 1 if len(documents) == per_page else None
+    prev_page = page - 1 if page > 1 else None
+    
+    return render_template(
+        'schema/document_item.html',
+        documents=documents,
+        next_page=next_page,
+        prev_page=prev_page,
+        page=page
     )
 

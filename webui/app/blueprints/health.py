@@ -1,4 +1,4 @@
-from flask import Blueprint, current_app
+from flask import Blueprint, jsonify
 
 
 bp = Blueprint('health', __name__)
@@ -23,4 +23,4 @@ def health():
                   type: string
                   example: ok
     """
-    return {"status": "ok"}
+    return jsonify({'status': 'ok'}), 200

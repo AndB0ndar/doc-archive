@@ -30,12 +30,14 @@
 
 <div class="actions">
     <button class="delete-btn"
-            hx-delete="{{ url_for('main.delete_document', doc_id=doc.id) }}"
-            hx-confirm="Вы уверены, что хотите удалить этот документ?"
-            hx-target="body"
-            hx-indicator="#spinner">
-        Удалить документ
+        hx-delete="{{ url_for('main.delete_document', doc_id=doc.id) }}"
+        hx-confirm="Вы уверены, что хотите удалить этот документ?"
+        hx-target="body"
+        hx-swap="none"
+        hx-redirect="{{ url_for('main.index') }}">
+        <i class="fas fa-trash-alt mr-2"></i> Удалить
     </button>
     <a href="{{ url_for('main.index') }}" class="button">Назад к поиску</a>
 </div>
 {% endblock %}
+

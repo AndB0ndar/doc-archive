@@ -18,11 +18,13 @@
         <div class="container">
             <h1><a href="/">PDF Search</a></h1>
             <nav>
+                <a href="{{ url_for('main.about') }}">О проекте</a>
                 {% if session.user %}
+                    <a href="{{ url_for('main.index') }}">Поиск</a>
+                    <a href="{{ url_for('main.my_documents') }}">Мои документы</a>
                     <a href="{{ url_for('auth.logout') }}">Выйти</a>
                 {% else %}
                     <a href="{{ url_for('auth.login') }}">Войти</a>
-                    <a href="{{ url_for('auth.register') }}">Регистрация</a>
                 {% endif %}
             </nav>
         </div>

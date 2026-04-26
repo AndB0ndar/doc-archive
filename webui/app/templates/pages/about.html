@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}О проекте{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold mb-6">О проекте "Интеллектуальный поиск"</h1>
+    <div class="prose max-w-none">
+        <p>
+            курсовой проект, реализующий полнотекстовый
+            и семантический поиск с использованием нейросетевых эмбеддингов.
+        </p>
+
+        <h2>Технологии</h2>
+
+        <ul>
+            <li><strong>Backend:</strong> Go (REST API, асинхронная обработка), Python (генерация эмбеддингов)</li>
+            <li><strong>Векторизация:</strong> Python (sentence-transformers), PostgreSQL + pgvector</li>
+            <li><strong>База данных:</strong> PostgreSQL + pgvector (векторный поиск)</li>
+            <li><strong>Очередь задач:</strong> Asynq на базе Redis</li>
+            <li><strong>Хранилище файлов:</strong> MinIO (S3‑совместимое)</li>
+            <li><strong>Веб‑интерфейс:</strong> Flask, htmx, PDF.js</li>
+        </ul>
+
+        <h2>Возможности</h2>
+        <ul>
+            <li>Загрузка PDF‑файлов (до 50 МБ) с метаданными</li>
+            <li>Фоновая обработка: извлечение текста, чанкинг, эмбеддинги</li>
+            <li>Полнотекстовый поиск с нечётким сравнением</li>
+            <li>Семантический (векторный) поиск на основе эмбеддингов</li>
+            <li>Асинхронная индексация документов через очередь задач</li>
+            <li>Хранение файлов в MinIO c автоматическим удалением через 7 дней</li>
+            <li>JWT‑аутентификация и личный кабинет</li>
+        </ul>
+
+        <h2>Исходный код</h2>
+        <p>Проект открыт на <a href="https://github.com/AndB0ndar/doc-archive">GitHub</a>.</p>
+
+        <h2>Автор</h2>
+        <p>Бондарь Андрей, РТУ МИРЭА, 2026</p>
+    </div>
+</div>
+
+{% endblock %}
