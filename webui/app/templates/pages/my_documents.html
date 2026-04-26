@@ -3,12 +3,12 @@
 {% block title %}Мои документы{% endblock %}
 
 {% block content %}
-<h1>Мои документы</h1>
+<h1><i class="fas fa-folder-open"></i> Мои документы</h1>
 <div id="documents-container"
     hx-get="{{ url_for('main.my_documents_list', page=1, limit=20) }}"
     hx-trigger="load"
-    hx-swap="innerHTML">
-    <p>Загрузка...</p>
+    hx-target="#documents-container"
+    hx-swap="innerHTML"
+    hx-error="innerHTML">
 </div>
 {% endblock %}
-

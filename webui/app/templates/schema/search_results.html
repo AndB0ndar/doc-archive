@@ -1,38 +1,35 @@
 {% if results %}
-<ul class="results-list">
+<ul class="results-list" style="list-style: none; padding: 0;">
     {% for r in results %}
-    <li class="result-item {% if r.answer %}has-answer{% endif %}">
-        <div class="result-header">
-            {% if r.answer %}
-            <a href="{{ url_for('main.document', doc_id=r.document.id) }}" class="result-title">
-                Документ "{{ r.document.title }}"
-            </a>
-            {% else %}
-                Документ -
-            {% endif %}
-            <!--
-            {% if r.confidence %}
-            <span class="similarity">({{ "%.1f"|format(r.confidence * 100) }}%)</span>
-            {% endif %}
-            -->
-        </div>
-        <div class="result-content">
-            {% if r.answer %}
-                <div class="answer-box">
-                    <strong>Ответ:</strong>
-                    <span class="answer-text">{{ r.answer }}</span>
-                </div>
-                <details>
-                    <summary>Контекст</summary>
-                    <p class="snippet">{{ r.content }}</p>
-                </details>
-            {% else %}
-                <p class="snippet">{{ r.content[:300] }}...</p>
-            {% endif %}
+    <li class="result-item">
+        <div style="padding: 1.25rem;">
+            <div class="result-header">
+                {% if r.answer %}
+                <a href="{{ url_for('main.document', doc_id=r.document.id) }}" class="result-title">
+                    <i class="fas fa-file-alt"></i> {{ r.document.title }}
+                </a>
+                {% else %}
+                <strong><i class="fas fa-file"></i> Документ</strong>
+                {% endif %}
+            </div>
+            <div class="result-content">
+                {% if r.answer %}
+                    <div class="answer-box" style="background: var(--bg); padding: 0.75rem; border-radius: 0.75rem; margin: 0.5rem 0;">
+                        <strong><i class="fas fa-robot"></i> Ответ AI:</strong>
+                        <span class="answer-text">{{ r.answer }}</span>
+                    </div>
+                    <details>
+                        <summary><i class="fas fa-scroll"></i> Контекст из документа</summary>
+                        <p class="snippet" style="margin-top: 0.5rem;">{{ r.content }}</p>
+                    </details>
+                {% else %}
+                    <p class="snippet">{{ r.content[:300] }}...</p>
+                {% endif %}
+            </div>
         </div>
     </li>
     {% endfor %}
 </ul>
 {% else %}
-<p class="no-results">Ничего не найдено( Попробуйте изменить запрос.</p>
+<p class="no-results" style="text-align: center; padding: 3rem;"><i class="fas fa-search"></i> Ничего не найдено. Попробуйте изменить запрос.</p>
 {% endif %}
