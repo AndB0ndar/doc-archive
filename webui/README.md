@@ -1,121 +1,121 @@
-# Document Management Frontend (Flask)
+# WebUI – Flask Frontend
 
-This is the frontend web application for a document management system.  
-It provides a user interface for uploading PDF files with metadata,
-searching through documents, and viewing them with an embedded PDF viewer.
-
-The frontend communicates with a separate Go backend API.
-All document storage and search logic is handled by that backend.
+This is the web interface for the **Doc Archive** intelligent PDF search system. It provides a user-friendly UI for document upload, search (full‑text and semantic), and PDF preview. The frontend communicates with the Go backend via REST API and uses **htmx** for asynchronous interactions.
 
 ## Features
 
-- Upload PDF files with title, authors, year, and category.
-- Search documents by text, title, or author.
-- View document details and embedded PDF.
-- htmx‑powered search results for a fast, dynamic UI.
-- Automatically generated API documentation via Swagger UI.
+- User authentication (register/login) with JWT tokens
+- Document upload with metadata (title, authors, year, category)
+- Full‑text and semantic search with real‑time results (debounced input)
+- Embedded PDF viewer using PDF.js
+- Document list and individual document pages
+- Server‑side sessions stored in **Redis** (via Flask‑Session)
 
-## Prerequisites
+## Tech Stack
 
-- **Docker** (to build and run the container)
-- A running instance of the **Go backend API**.  
-  By default, the frontend expects it at `http://0.0.0.0:8080` (the service name used in a Docker Compose setup).  
-  If the backend runs elsewhere, you must set the `GO_API_BASE_URL` environment variable accordingly.
-
-## Environment Variables
-
-| Variable           | Description                                      | Default               |
-|--------------------|--------------------------------------------------|-----------------------|
-| `GO_API_BASE_URL`  | Base URL of the Go backend API                   | `http://0.0.0.0:8080` |
-| `UPLOAD_FOLDER`    | Directory where uploaded PDFs are stored         | `/app/uploads`        |
-| `SECRET_KEY`       | Unique string used for cryptographic signing of data | autogen |
-
-## Building the Docker Image
-
-From the directory containing the `Dockerfile` and the application code, run:
-
-```bash
-docker build -t doc-frontend .
-```
-
-## Running the Container
-
-### Basic run (with default settings)
-
-```bash
-docker run -p 5000:5000 doc-frontend
-```
-
-The application will be available at [http://localhost:5000](http://localhost:5000).
-
-### Providing environment variables
-
-If your Go backend runs on your host machine (e.g., at `localhost:8080`), you can use:
-
-```bash
-docker run -p 5000:5000 \
-  -e GO_API_BASE_URL="http://host.docker.internal:8080" \
-  doc-frontend
-```
-
-On Linux, replace `host.docker.internal` with the actual IP of your host (often `172.17.0.1`).
-
-### Persisting uploaded files
-
-To keep uploaded files outside the container, mount a host directory to `/app/uploads`:
-
-```bash
-docker run -p 5000:5000 \
-  -v /path/on/host/uploads:/app/uploads \
-  doc-frontend
-```
-
-## Accessing the Application
-
-- **Main UI**: [http://localhost:5000](http://localhost:5000)
-- **Swagger API documentation**: [http://localhost:5000/docs](http://localhost:5000/docs)  
-  (Provides interactive documentation for all Flask routes, even those that return HTML.)
-
-## Development Without Docker
-
-1. Install Python 3.9+ and create a virtual environment.
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. Set the required environment variables:
-   ```bash
-   export GO_API_BASE_URL="http://localhost:8080"
-   export UPLOAD_FOLDER="/path/to/uploads"
-   ```
-4. Run the Flask development server:
-   ```bash
-   python app.py
-   ```
-   The app will be available at `http://localhost:5000`.
+| Component       | Technology                                      |
+|----------------|-------------------------------------------------|
+| Framework      | Flask                                           |
+| Templates      | Jinja2                                          |
+| Frontend logic | htmx (asynchronous requests)                   |
+| PDF viewer     | PDF.js (included as static)                    |
+| Session store  | Redis (using `Flask-Session`)                  |
+| HTTP client    | `requests` (calls Go API)                      |
+| Deployment     | Docker / Docker Compose                         |
 
 ## Project Structure
 
 ```
-.
-├── app.py                 # Main Flask application
-├── templates/             # HTML templates (Jinja2)
-│   ├── index.html
-│   ├── upload.html
-│   ├── document.html
-│   ├── search_results.html
-│   ├── 404.html
-│   └── 500.html
-├── requirements.txt       # Python dependencies
-├── Dockerfile             # Container definition
-└── README.md              # This file
+webui/
+├── app/
+│   ├── __init__.py          # Flask app factory
+│   ├── api_client.py        # HTTP helpers to call Go API
+│   ├── blueprints/          # Route modules
+│   │   ├── auth.py          # login, register
+│   │   ├── health.py        # health checks
+│   │   └── main.py          # index, upload, documents, search
+│   ├── config.py            # Configuration classes
+│   ├── decorators.py        # e.g. @login_required
+│   ├── error_handlers.py    # custom error pages
+│   ├── static/              # CSS, JS (style.css)
+│   └── templates/           # Jinja2 templates
+│       ├── base.html
+│       ├── auth/
+│       ├── errors/
+│       ├── pages/           # index, upload, document
+│       └── schema/          # search_results.html (htmx partial)
+├── app.py                   # Development entry point
+├── Dockerfile               # Container build
+├── requirements.txt
+├── wsgi.py                  # Production entry point
+└── README.md
 ```
 
-## Notes
+## Configuration
 
-- The frontend expects the Go backend to provide the following endpoints:
-  - `POST /upload` – accepts a file and metadata, returns `{ "id": ... }`
-  - `GET /documents/{id}` – returns document metadata
-  - `GET /search?q=...&type=...` – returns search results (JSON)
-- All file storage is delegated to the backend; the frontend only serves the uploaded PDFs from `UPLOAD_FOLDER` for embedding.
-- The Swagger UI is generated by `flasgger` and is available at `/docs`.
+All settings are loaded from environment variables. See `app/config.py`.
+
+| Variable              | Description                            | Default                     |
+|-----------------------|----------------------------------------|-----------------------------|
+| `SECRET_KEY`          | Flask secret key (required)            | (none – must be set)        |
+| `GO_API_BASE_URL`     | URL of the Go backend API              | `http://api:8080`           |
+| `REDIS_URL`           | Redis connection URL (for sessions)    | `redis://redis:6379/0`      |
+| `FLASK_ENV`           | Environment (`development`/`production`)| `development`               |
+| `DEBUG`               | Enable debug mode                      | `False`                     |
+
+## Quick Start
+
+### Using Docker (recommended)
+
+The webui is part of the `docker-compose.app.yml` stack. From the project root:
+
+```bash
+docker-compose -f docker-compose.infra.yml up -d
+docker-compose -f docker-compose.app.yml up -d webui
+```
+
+Access the interface at [http://localhost:5005](http://localhost:5005)
+
+### Local development (without Docker)
+
+1. Make sure the Go backend and Redis are running (use `docker-compose.infra.yml` to start dependencies).
+2. Install Python dependencies:
+   ```bash
+   cd webui
+   pip install -r requirements.txt
+   ```
+3. Set environment variables (create `.env` or export manually):
+   ```bash
+   export SECRET_KEY="your-secret-key"
+   export GO_API_BASE_URL="http://localhost:8080"
+   export REDIS_URL="redis://localhost:6379/0"
+   ```
+4. Run the Flask development server:
+   ```bash
+   flask run --port=5005
+   ```
+
+## API Integration
+
+The frontend does **not** talk directly to the database. All data operations are done through the Go API using the helper `call_go_api()` and `call_go_api_auth()` (the latter adds the JWT token from the session).
+
+Typical flow:
+- User logs in -> JWT token stored in server‑side Redis session.
+- For each user request, the token is automatically attached to outgoing API calls.
+- On logout, the session is cleared.
+
+## Session Storage
+
+Sessions are **not** stored in cookies (only session ID).  
+Instead, **Flask-Session** stores session data in Redis. This ensures that sessions become invalid when Redis is reset (e.g., after `docker-compose down -v`), and allows multiple webui replicas to share sessions.
+
+## Environment‑specific notes
+
+- **Development**: Debug mode enabled, auto‑reload, detailed error pages.
+- **Production**: Use `wsgi.py` with a production server (e.g., Gunicorn). The Dockerfile runs Gunicorn by default.
+
+## Customisation
+
+- Static assets (CSS, images) go into `app/static/`.
+- PDF.js is not included in this repo; you can copy it into `app/static/pdfjs/` or link a CDN. The template expects PDF.js to be available at `/static/pdfjs/web/viewer.html`.
+

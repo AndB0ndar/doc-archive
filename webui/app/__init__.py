@@ -1,8 +1,10 @@
 import os
+import redis
 import logging
 
 from flask import Flask
 from flasgger import Swagger
+from flask_session import Session
 
 from app.config import config_by_name
 from app.error_handlers import register_error_handlers
@@ -17,8 +19,9 @@ def create_app(config_name='default'):
     # Load configuration
     app.config.from_object(config_by_name[config_name])
 
-    # Initialize Swagger
+    # Extensions
     swagger = Swagger(app)
+    Session(app)
 
     # Register blueprints
     from app.blueprints import health, auth, main

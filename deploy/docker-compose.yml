@@ -101,11 +101,14 @@ services:
     environment:
       GO_API_BASE_URL: http://api-gateway:8080
       SECRET_KEY: ${SECRET_KEY:-your-strong-secret-key}
+      REDIS_URL: redis://redis:6379/0
     ports:
       - "5005:5000"
     depends_on:
       api-gateway:
         condition: service_started
+      redis:
+        condition: service_healthy
     networks:
       - doc-net
 

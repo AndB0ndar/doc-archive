@@ -97,7 +97,7 @@ def register():
         if err:
             logger.error(f"Registration error: {err}")
             flash("Server connection error")
-        elif resp_json and 'id' in resp_json:  # adjust based on actual response
+        elif resp_json and 'token' in resp_json:
             logger.info("Registration successful")
             return redirect(url_for('auth.login'))
         else:

@@ -1,4 +1,5 @@
 import os
+import redis
 import secrets
 
 
@@ -22,10 +23,12 @@ class Config:
         'static_url_path': '/flasgger_static',
     }
 
-    #app.config['SESSION_TYPE'] = 'redis'
-    #app.config['SESSION_PERMANENT'] = False
-    #app.config['SESSION_USE_SIGNER'] = True
-    #app.config['SESSION_REDIS'] = redis.from_url(os.getenv('REDIS_URL', 'redis://redis:6379/0'))
+    # Redis for session
+    SESSION_TYPE = 'redis'
+    SESSION_REDIS = redis.from_url(os.getenv('REDIS_URL', 'redis://redis:6379/0'))
+    SESSION_PERMANENT = False
+    SESSION_USE_SIGNER = True
+    SESSION_KEY_PREFIX = 'flask_session:'
 
 
 class DevelopmentConfig(Config):
