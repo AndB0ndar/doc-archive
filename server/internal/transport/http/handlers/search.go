@@ -8,17 +8,18 @@ import (
 	"time"
 
 	"github.com/AndB0ndar/doc-archive/internal/domain"
-	"github.com/AndB0ndar/doc-archive/internal/middleware"
+	"github.com/AndB0ndar/doc-archive/internal/infrastructure/logger"
 	"github.com/AndB0ndar/doc-archive/internal/models"
+	"github.com/AndB0ndar/doc-archive/internal/transport/http/middleware"
 )
 
 type SearchHandler struct {
 	searchService domain.SearchService
-	logger        *slog.Logger
+	logger        *logger.Logger
 }
 
 func NewSearchHandler(
-	searchService domain.SearchService, logger *slog.Logger,
+	searchService domain.SearchService, logger *logger.Logger,
 ) *SearchHandler {
 	return &SearchHandler{
 		searchService: searchService,

@@ -5,6 +5,8 @@ import (
 	"os"
 )
 
+type Logger = slog.Logger
+
 func New(env string) *slog.Logger {
 	var handler slog.Handler
 	if env == "production" {

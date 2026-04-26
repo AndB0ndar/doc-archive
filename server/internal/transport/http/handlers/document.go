@@ -11,17 +11,18 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/AndB0ndar/doc-archive/internal/domain"
-	"github.com/AndB0ndar/doc-archive/internal/middleware"
+	"github.com/AndB0ndar/doc-archive/internal/infrastructure/logger"
 	"github.com/AndB0ndar/doc-archive/internal/models"
+	"github.com/AndB0ndar/doc-archive/internal/transport/http/middleware"
 )
 
 type DocumentHandler struct {
 	docService domain.DocumentService
-	logger     *slog.Logger
+	logger     *logger.Logger
 }
 
 func NewDocumentHandler(
-	docService domain.DocumentService, logger *slog.Logger,
+	docService domain.DocumentService, logger *logger.Logger,
 ) *DocumentHandler {
 	return &DocumentHandler{
 		docService: docService,
@@ -260,6 +261,63 @@ func mapDocumentToResponse(doc *domain.Document) models.DocumentResponse {
 		Category:  doc.Category,
 		CreatedAt: doc.CreatedAt,
 	}
+}
+
+// GetDocumentStatus возвращает текущий статус обработки документа.
+// @Summary      Получить статус документа
+// @Description  Возвращает статус (pending, processing, done, error) документа по ID.
+// @Tags         documents
+// @Produce      json
+// @Param        id path string true "ID документа"
+// @Success      200  {object}  models.DocumentStatusResponse
+// @Failure      400  {string}  string "Invalid document ID"
+// @Failure      401  {string}  string "Unauthorized"
+// @Failure      404  {string}  string "Document not found"
+// @Security     BearerAuth
+// @Router       /documents/{id}/status [get]
+func (h *DocumentHandler) GetDocumentStatus(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	logger := h.logger.With(
+		slog.String("method", r.Method), slog.String("path", r.URL.Path),
+	)
+	logger.Debug("GetDocumentStatus request started")
+
+	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok {
+		logger.Warn("unauthorized - userID missing in context")
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	logger = logger.With(slog.String("user_id", userID))
+
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		logger.Warn("invalid document ID (empty)")
+		http.Error(w, "Invalid document ID", http.StatusBadRequest)
+		return
+	}
+	logger = logger.With(slog.String("document_id", id))
+
+	logger.Debug("calling docService.GetDocumentStatus")
+	status, err := h.docService.GetDocumentStatus(r.Context(), id, userID)
+	if err != nil {
+		logger.Error("document not found", slog.Any("error", err))
+		http.Error(w, "Document not found", http.StatusNotFound)
+		return
+	}
+
+	response := models.DocumentStatusResponse{Status: status}
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		logger.Error("failed to encode response", slog.Any("error", err))
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	logger.Info(
+		"Get document status completed",
+		slog.Duration("duration", time.Since(start)),
+	)
 }
 
 // DownloadDocument скачивает файл документа по ID.

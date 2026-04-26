@@ -1,4 +1,4 @@
-package server
+package http
 
 import (
 	"net/http"
@@ -10,8 +10,8 @@ import (
 	_ "github.com/AndB0ndar/doc-archive/docs"
 	httpSwagger "github.com/swaggo/http-swagger"
 
-	"github.com/AndB0ndar/doc-archive/internal/handlers"
-	mdwr "github.com/AndB0ndar/doc-archive/internal/middleware"
+	"github.com/AndB0ndar/doc-archive/internal/transport/http/handlers"
+	mdwr "github.com/AndB0ndar/doc-archive/internal/transport/http/middleware"
 )
 
 func NewRouter(
@@ -48,6 +48,7 @@ func NewRouter(
 			r.Get("/", docHandler.ListDocuments)
 			r.Get("/{id}", docHandler.GetDocument)
 			r.Delete("/{id}", docHandler.DeleteDocument)
+			r.Delete("/{id}/status", docHandler.GetDocumentStatus)
 			r.Get("/{id}/download", docHandler.DownloadDocument)
 			r.Get("/{id}/download-url", docHandler.GetDocumentDownloadURL)
 		})

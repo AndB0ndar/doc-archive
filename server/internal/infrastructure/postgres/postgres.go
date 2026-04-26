@@ -1,4 +1,4 @@
-package db
+package postgres
 
 import (
 	"context"
@@ -11,6 +11,8 @@ import (
 
 	"github.com/AndB0ndar/doc-archive/internal/config"
 )
+
+type Pool = pgxpool.Pool
 
 func NewPool(cfg config.DatabaseConfig, logger *slog.Logger) (*pgxpool.Pool, error) {
 	poolCfg, err := pgxpool.ParseConfig(cfg.URL)

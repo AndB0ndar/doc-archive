@@ -9,15 +9,16 @@ import (
 
 	"github.com/AndB0ndar/doc-archive/internal/config"
 	"github.com/AndB0ndar/doc-archive/internal/domain"
+	"github.com/AndB0ndar/doc-archive/internal/infrastructure/logger"
 )
 
-type Service struct {
+type service struct {
 	chunkRepo      domain.ChunkRepository
 	embedderClient domain.EmbedderClient
 	rerankerClient domain.RerankerClient
 	readerClient   domain.ReaderClient
 	cfg            config.SearchConfig
-	logger         *slog.Logger
+	logger         *logger.Logger
 }
 
 func New(
@@ -26,9 +27,9 @@ func New(
 	rerankerClient domain.RerankerClient,
 	readerClient domain.ReaderClient,
 	cfg config.SearchConfig,
-	logger *slog.Logger,
+	logger *logger.Logger,
 ) domain.SearchService {
-	return &Service{
+	return &service{
 		chunkRepo:      chunkRepo,
 		embedderClient: embedderClient,
 		rerankerClient: rerankerClient,
@@ -38,7 +39,7 @@ func New(
 	}
 }
 
-func (s *Service) Search(
+func (s *service) Search(
 	ctx context.Context,
 	req domain.SearchQuery,
 	userID string,
@@ -166,7 +167,7 @@ func (s *Service) Search(
 	return results, nil
 }
 
-func (s *Service) validate(req *domain.SearchQuery) error {
+func (s *service) validate(req *domain.SearchQuery) error {
 	req.Query = strings.TrimSpace(req.Query)
 	if req.Query == "" {
 		return fmt.Errorf("empty query")
@@ -174,7 +175,7 @@ func (s *Service) validate(req *domain.SearchQuery) error {
 	return nil
 }
 
-func (s *Service) toResults(chunks []*domain.ChunkSearchResult) []domain.SearchResult {
+func (s *service) toResults(chunks []*domain.ChunkSearchResult) []domain.SearchResult {
 	results := make([]domain.SearchResult, len(chunks))
 	for i, ch := range chunks {
 		results[i] = domain.SearchResult{
@@ -187,7 +188,7 @@ func (s *Service) toResults(chunks []*domain.ChunkSearchResult) []domain.SearchR
 	return results
 }
 
-func (s *Service) applyReranking(
+func (s *service) applyReranking(
 	ctx context.Context,
 	query string,
 	results []domain.SearchResult,
@@ -239,7 +240,7 @@ func (s *Service) applyReranking(
 	return results
 }
 
-func (s *Service) applyReader(
+func (s *service) applyReader(
 	ctx context.Context,
 	query string,
 	results []domain.SearchResult,

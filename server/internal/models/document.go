@@ -13,6 +13,7 @@ type DocumentDB struct {
 	Category  *string   `json:"category,omitempty"`
 	FilePath  string    `json:"file_path"`
 	FileSize  int64     `json:"file_size"`
+	Status    string    `json:"status"`
 	CreatedAt time.Time `json:"created_at"`
 }
 

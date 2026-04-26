@@ -10,17 +10,18 @@ import (
 	"time"
 
 	"github.com/AndB0ndar/doc-archive/internal/domain"
-	"github.com/AndB0ndar/doc-archive/internal/middleware"
+	"github.com/AndB0ndar/doc-archive/internal/infrastructure/logger"
 	"github.com/AndB0ndar/doc-archive/internal/models"
+	"github.com/AndB0ndar/doc-archive/internal/transport/http/middleware"
 )
 
 type UploadHandler struct {
 	docService domain.DocumentService
-	logger     *slog.Logger
+	logger     *logger.Logger
 }
 
 func NewUploadHandler(
-	docService domain.DocumentService, logger *slog.Logger,
+	docService domain.DocumentService, logger *logger.Logger,
 ) *UploadHandler {
 	return &UploadHandler{
 		docService: docService,

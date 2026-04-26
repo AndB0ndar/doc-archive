@@ -10,7 +10,7 @@ import (
 	"github.com/AndB0ndar/doc-archive/internal/domain"
 )
 
-type Service struct {
+type service struct {
 	userRepo  domain.UserRepository
 	jwtSecret string
 	tokenTTL  time.Duration
@@ -19,14 +19,14 @@ type Service struct {
 func New(
 	userRepo domain.UserRepository, jwtSecret string, tokenTTL time.Duration,
 ) domain.AuthService {
-	return &Service{
+	return &service{
 		userRepo:  userRepo,
 		jwtSecret: jwtSecret,
 		tokenTTL:  tokenTTL,
 	}
 }
 
-func (s *Service) Register(ctx context.Context, email, password string) (string, *domain.User, error) {
+func (s *service) Register(ctx context.Context, email, password string) (string, *domain.User, error) {
 	user, err := domain.NewUser(email, password)
 	if err != nil {
 		return "", nil, err
@@ -41,7 +41,7 @@ func (s *Service) Register(ctx context.Context, email, password string) (string,
 	return token, user, nil
 }
 
-func (s *Service) Login(ctx context.Context, email, password string) (string, *domain.User, error) {
+func (s *service) Login(ctx context.Context, email, password string) (string, *domain.User, error) {
 	user, err := s.userRepo.GetByEmail(ctx, email)
 	if err != nil {
 		return "", nil, errors.New("invalid credentials")
@@ -56,6 +56,6 @@ func (s *Service) Login(ctx context.Context, email, password string) (string, *d
 	return token, user, nil
 }
 
-func (s *Service) GenerateToken(userID string) (string, error) {
+func (s *service) GenerateToken(userID string) (string, error) {
 	return jwt.GenerateToken(userID, s.jwtSecret, s.tokenTTL)
 }

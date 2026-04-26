@@ -9,6 +9,8 @@ CREATE TABLE users (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TYPE document_status AS ENUM ('pending', 'processing', 'done', 'error');
+
 CREATE TABLE documents (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -18,10 +20,15 @@ CREATE TABLE documents (
     category TEXT,
     file_path TEXT NOT NULL,
     file_size BIGINT NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+
+    CONSTRAINT documents_status_check 
+        CHECK (status IN ('pending', 'processing', 'done', 'error'))
 );
 
 CREATE INDEX idx_documents_user_id ON documents(user_id);
+CREATE INDEX idx_documents_status ON documents(status);
 
 CREATE TABLE chunks (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

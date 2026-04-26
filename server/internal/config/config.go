@@ -16,6 +16,7 @@ type Config struct {
 	ReaderURL   string
 	Database    DatabaseConfig
 	MinIO       MinIOConfig
+	Queue       QueueConfig
 	Search      SearchConfig
 	Chunk       ChunkConfig
 	JWTSecret   string
@@ -46,12 +47,19 @@ type DatabaseConfig struct {
 	MaxConnIdleTime   time.Duration
 	HealthCheckPeriod time.Duration
 }
+
 type MinIOConfig struct {
 	URL       string
 	AccessKey string
 	SecretKey string
 	Bucket    string
 	UseSSL    bool
+}
+
+type QueueConfig struct {
+	Concurrency int // for server
+	MaxRetry    int // for client
+	TimeoutSec  int // for client
 }
 
 func Load() (*Config, error) {
@@ -96,7 +104,12 @@ func Load() (*Config, error) {
 			AccessKey: getEnv("MINIO_ACCESS_KEY", "minioadmin"),
 			SecretKey: getEnv("MINIO_SECRET_KEY", "minioadmin"),
 			Bucket:    getEnv("MINIO_BUCKET", "pdf-documents"),
-			UseSSL:    getEnv("MINIO_USE_SSL", "false") == "true",
+			UseSSL:    getEnv("MINIO_USE_SSL", "0") == "1",
+		},
+		Queue: QueueConfig{
+			Concurrency: getEnvAsInt("QUEUE_CONCURRENCY", 5),
+			MaxRetry:    getEnvAsInt("QUEUE_MAX_RETRY", 3),
+			TimeoutSec:  getEnvAsInt("QUEUE_TIMEOUT_SEC", 600),
 		},
 		RedisURL: getEnv("REDIS_URL", "redis:6379"),
 	}, nil

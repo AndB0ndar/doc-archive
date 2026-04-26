@@ -1,30 +1,34 @@
-# ---- Build stage ----
+# ================================
+# Build
+# ================================
 FROM golang:1.25-alpine AS builder
 
-WORKDIR /app
+RUN apk add --no-cache git ca-certificates
+
+WORKDIR /build
 
 COPY go.mod go.sum ./
-
 RUN go mod download
 
 COPY . .
 
-RUN go build -o doc-search cmd/server/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o api ./cmd/api
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o indexer ./cmd/indexer
 
-
-# ---- Final stage ----
+# ================================
+# Final image
+# ================================
 FROM alpine:latest
 
-#We install the necessary packages:
-# ca-certificates - for HTTPS
-# curl requests - for healthcheck
-# poppler-utils - for pdftotext (extracting text from PDF)
-RUN apk --no-cache add ca-certificates curl poppler-utils
+RUN apk --no-cache add ca-certificates tzdata curl poppler-utils
 
 WORKDIR /app
 
-COPY --from=builder /app/doc-search .
+COPY --from=builder /build/api .
+COPY --from=builder /build/indexer .
 
-EXPOSE 8080
+RUN adduser -D -u 1000 appuser && chown -R appuser /app
+USER appuser
 
-CMD ["./doc-search"]
+CMD ["./api"]
+

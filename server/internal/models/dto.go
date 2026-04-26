@@ -29,7 +29,12 @@ type DocumentResponse struct {
 	Year      *int      `json:"year"`
 	Category  *string   `json:"category"`
 	FilePath  string    `json:"file_path"`
+	Status    string    `json:"status"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+type DocumentStatusResponse struct {
+	Status string `json:"status"` // pending, processing, done, error
 }
 
 type DocumentDownloadURLResponse struct {

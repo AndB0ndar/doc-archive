@@ -7,6 +7,13 @@ definitions:
       user:
         $ref: '#/definitions/models.UserResponse'
     type: object
+  models.DocumentDownloadURLResponse:
+    properties:
+      expires_in:
+        type: integer
+      url:
+        type: string
+    type: object
   models.DocumentResponse:
     properties:
       authors:
@@ -19,10 +26,18 @@ definitions:
         type: string
       id:
         type: string
+      status:
+        type: string
       title:
         type: string
       year:
         type: integer
+    type: object
+  models.DocumentStatusResponse:
+    properties:
+      status:
+        description: pending, processing, done, error
+        type: string
     type: object
   models.LoginRequest:
     properties:
@@ -188,6 +203,106 @@ paths:
       security:
       - BearerAuth: []
       summary: Получить документ
+      tags:
+      - documents
+  /documents/{id}/download:
+    get:
+      description: Возвращает PDF-файл документа (редирект на временную ссылку MinIO)
+      parameters:
+      - description: ID документа
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/pdf
+      responses:
+        "302":
+          description: Redirect to presigned URL
+          schema:
+            type: string
+        "400":
+          description: Invalid document ID
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "404":
+          description: Document not found
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Скачать документ
+      tags:
+      - documents
+  /documents/{id}/download-url:
+    get:
+      description: Возвращает presigned URL для доступа к файлу документа.
+      parameters:
+      - description: ID документа
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.DocumentDownloadURLResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "404":
+          description: Document not found
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Получить ссылку на скачивание
+      tags:
+      - documents
+  /documents/{id}/status:
+    get:
+      description: Возвращает статус (pending, processing, done, error) документа
+        по ID.
+      parameters:
+      - description: ID документа
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.DocumentStatusResponse'
+        "400":
+          description: Invalid document ID
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "404":
+          description: Document not found
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Получить статус документа
       tags:
       - documents
   /login:

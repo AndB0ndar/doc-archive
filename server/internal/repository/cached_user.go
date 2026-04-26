@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/AndB0ndar/doc-archive/internal/cache"
 	"github.com/AndB0ndar/doc-archive/internal/domain"
+	"github.com/AndB0ndar/doc-archive/internal/infrastructure/cache"
 )
 
 type CachedUserRepository struct {

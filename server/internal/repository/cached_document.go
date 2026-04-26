@@ -7,8 +7,8 @@ import (
 
 	"log/slog"
 
-	"github.com/AndB0ndar/doc-archive/internal/cache"
 	"github.com/AndB0ndar/doc-archive/internal/domain"
+	"github.com/AndB0ndar/doc-archive/internal/infrastructure/cache"
 )
 
 type CachedDocumentRepository struct {
@@ -76,6 +76,20 @@ func (c *CachedDocumentRepository) GetByUserID(
 		_ = c.cache.Set(context.Background(), key, docs, c.ttl)
 	}()
 	return docs, nil
+}
+
+func (c *CachedDocumentRepository) UpdateStatus(
+	ctx context.Context, id string, status domain.DocumentStatus,
+) error {
+	err := c.repo.UpdateStatus(ctx, id, status)
+	if err != nil {
+		return err
+	}
+
+	if err := c.cache.DeleteByPattern(ctx, "doc:*"); err != nil {
+		_ = err
+	}
+	return nil
 }
 
 func (c *CachedDocumentRepository) Create(

@@ -31,8 +31,8 @@ func main() {
 	}
 
 	application := app.New(cfg)
-	if err := application.Run(); err != nil {
-		slog.Error("application failed", "error", err)
+	if err := application.RunAPI(); err != nil {
+		slog.Error("API failed", "error", err)
 		os.Exit(1)
 	}
 }

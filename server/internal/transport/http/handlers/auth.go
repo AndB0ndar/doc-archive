@@ -7,16 +7,17 @@ import (
 	"time"
 
 	"github.com/AndB0ndar/doc-archive/internal/domain"
+	"github.com/AndB0ndar/doc-archive/internal/infrastructure/logger"
 	"github.com/AndB0ndar/doc-archive/internal/models"
 )
 
 type AuthHandler struct {
 	authService domain.AuthService
-	logger      *slog.Logger
+	logger      *logger.Logger
 }
 
 func NewAuthHandler(
-	authService domain.AuthService, logger *slog.Logger,
+	authService domain.AuthService, logger *logger.Logger,
 ) *AuthHandler {
 	return &AuthHandler{
 		authService: authService,

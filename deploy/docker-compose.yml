@@ -26,6 +26,37 @@ services:
     networks:
       - doc-net
 
+  indexer:
+    build: ../server
+    container_name: indexer
+    command: ["./indexer"]
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-pass}@postgres:5432/${POSTGRES_DB:-docdb}?sslmode=disable
+      REDIS_URL: redis:6379
+      MINIO_URL: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_USER:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_PASSWORD:-minioadmin}
+      MINIO_BUCKET: ${MINIO_BUCKET:-pdf-documents}
+      EMBEDDER_URL: http://rag:5000
+      RERANKER_URL: http://rag:5000
+      READER_URL: http://rag:5000
+      CHUNK_SIZE: 500
+      CHUNK_OVERLAP: 50
+      QUEUE_CONCURRENCY: 5
+      QUEUE_MAX_RETRY: 3
+      QUEUE_TIMEOUT_SEC: 600
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      rag:
+        condition: service_healthy
+    networks:
+      - doc-net
+
   api-gateway:
     build: ../server
     container_name: api-gateway
@@ -53,6 +84,8 @@ services:
         condition: service_healthy
       rag:
         condition: service_healthy
+      indexer:
+        condition: service_started
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
