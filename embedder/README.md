@@ -9,8 +9,8 @@ input validation, and high performance.
 
 ## Features
 
-- **Embeddings** – Generate dense vector representations of texts (384‑dim by default).  
-- **Reranking** – Re‑score a list of candidate texts against a query using a cross‑encoder (optional).  
+- **Embeddings** – Generate dense vector representations of texts (384-dim by default).  
+- **Reranking** – Re-score a list of candidate texts against a query using a cross-encoder (optional).  
 - **Question Answering** – Extract exact answer spans from a context passage (optional).  
 - **Modular design** – Each model can be enabled/disabled via environment variables.  
 - **Interactive Swagger UI** at `/docs` and ReDoc at `/redoc`.  
@@ -94,7 +94,7 @@ The service is configured through environment variables:
 | Variable              | Default                         | Description                                         |
 |-----------------------|---------------------------------|-----------------------------------------------------|
 | `EMBED_MODEL_NAME`    | `multi-qa-MiniLM-L6-cos-v1`     | SentenceTransformer model for embeddings.           |
-| `RERANK_MODEL_NAME`   | (not set)                       | Cross‑encoder model for reranking (e.g., `cross-encoder/ms-marco-MiniLM-L-6-v2`). If not set, `/rerank` will be unavailable. |
+| `RERANK_MODEL_NAME`   | (not set)                       | Cross-encoder model for reranking (e.g., `cross-encoder/ms-marco-MiniLM-L-6-v2`). If not set, `/rerank` will be unavailable. |
 | `READER_MODEL_NAME`   | (not set)                       | Hugging Face extractive QA model (e.g., `distilbert-base-cased-distilled-squad`). If not set, `/extract_answer` will be unavailable. |
 | `MAX_TEXT_LENGTH`     | `5000`                          | Maximum number of characters per input text (truncated to this limit). |
 | `PORT`                | `5000`                          | Port the server listens on.                         |
@@ -161,7 +161,7 @@ curl -X POST http://localhost:5000/embed \
 **`POST /rerank`**  
 *(only available if `RERANK_MODEL_NAME` is set)*
 
-Re‑scores a list of candidate texts against a query.
+Re-scores a list of candidate texts against a query.
 
 **Request body:**
 ```json
@@ -211,7 +211,7 @@ Extracts an exact answer span from a context passage.
 }
 ```
 
-- `start` and `end` are character indices within the context (0‑based, inclusive start, exclusive end).
+- `start` and `end` are character indices within the context (0-based, inclusive start, exclusive end).
 
 ---
 

@@ -48,7 +48,7 @@ func NewRouter(
 			r.Get("/", docHandler.ListDocuments)
 			r.Get("/{id}", docHandler.GetDocument)
 			r.Delete("/{id}", docHandler.DeleteDocument)
-			r.Delete("/{id}/status", docHandler.GetDocumentStatus)
+			r.Get("/{id}/status", docHandler.GetDocumentStatus)
 			r.Get("/{id}/download", docHandler.DownloadDocument)
 			r.Get("/{id}/download-url", docHandler.GetDocumentDownloadURL)
 		})

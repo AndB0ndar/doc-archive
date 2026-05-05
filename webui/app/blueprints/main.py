@@ -205,7 +205,7 @@ def document_file(doc_id):
     )
 
 
-@bp.route('/documents/<doc_id>/delete', methods=['DELETE'])
+@bp.route('/documents/<uuid:doc_id>/delete', methods=['DELETE'])
 @login_required
 def delete_document(doc_id):
     """

@@ -1,15 +1,15 @@
 # WebUI – Flask Frontend
 
-This is the web interface for the **Doc Archive** intelligent PDF search system. It provides a user-friendly UI for document upload, search (full‑text and semantic), and PDF preview. The frontend communicates with the Go backend via REST API and uses **htmx** for asynchronous interactions.
+This is the web interface for the **Doc Archive** intelligent PDF search system. It provides a user-friendly UI for document upload, search (full-text and semantic), and PDF preview. The frontend communicates with the Go backend via REST API and uses **htmx** for asynchronous interactions.
 
 ## Features
 
 - User authentication (register/login) with JWT tokens
 - Document upload with metadata (title, authors, year, category)
-- Full‑text and semantic search with real‑time results (debounced input)
+- Full-text and semantic search with real-time results (debounced input)
 - Embedded PDF viewer using PDF.js
 - Document list and individual document pages
-- Server‑side sessions stored in **Redis** (via Flask‑Session)
+- Server-side sessions stored in **Redis** (via Flask-Session)
 
 ## Tech Stack
 
@@ -100,7 +100,7 @@ Access the interface at [http://localhost:5005](http://localhost:5005)
 The frontend does **not** talk directly to the database. All data operations are done through the Go API using the helper `call_go_api()` and `call_go_api_auth()` (the latter adds the JWT token from the session).
 
 Typical flow:
-- User logs in -> JWT token stored in server‑side Redis session.
+- User logs in -> JWT token stored in server-side Redis session.
 - For each user request, the token is automatically attached to outgoing API calls.
 - On logout, the session is cleared.
 
@@ -109,9 +109,9 @@ Typical flow:
 Sessions are **not** stored in cookies (only session ID).  
 Instead, **Flask-Session** stores session data in Redis. This ensures that sessions become invalid when Redis is reset (e.g., after `docker-compose down -v`), and allows multiple webui replicas to share sessions.
 
-## Environment‑specific notes
+## Environment-specific notes
 
-- **Development**: Debug mode enabled, auto‑reload, detailed error pages.
+- **Development**: Debug mode enabled, auto-reload, detailed error pages.
 - **Production**: Use `wsgi.py` with a production server (e.g., Gunicorn). The Dockerfile runs Gunicorn by default.
 
 ## Customisation
