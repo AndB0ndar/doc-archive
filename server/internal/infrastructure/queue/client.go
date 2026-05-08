@@ -1,6 +1,7 @@
 package queue
 
 import (
+	"errors"
 	"time"
 
 	"github.com/hibiken/asynq"
@@ -35,6 +36,15 @@ func (c *Client) Enqueue(task *asynq.Task) (string, error) {
 		return "", err
 	}
 	return info.ID, nil
+}
+
+// EnqueueAny implements domain.TaskQueue interface
+func (c *Client) EnqueueAny(task interface{}) (string, error) {
+	asynqTask, ok := task.(*asynq.Task)
+	if !ok {
+		return "", errors.New("task must be *asynq.Task")
+	}
+	return c.Enqueue(asynqTask)
 }
 
 func (c *Client) Close() error {

@@ -13,9 +13,7 @@ import (
 
 	"github.com/AndB0ndar/doc-archive/internal/domain"
 	"github.com/AndB0ndar/doc-archive/internal/infrastructure/logger"
-	"github.com/AndB0ndar/doc-archive/internal/infrastructure/minio"
 	"github.com/AndB0ndar/doc-archive/internal/infrastructure/parser"
-	"github.com/AndB0ndar/doc-archive/internal/infrastructure/queue"
 	"github.com/AndB0ndar/doc-archive/internal/tasks"
 )
 
@@ -24,8 +22,8 @@ type service struct {
 	chunkRepo   domain.ChunkRepository
 	embedder    domain.EmbedderClient
 	chunker     domain.ChunkerService
-	minio       *minio.MinIOStorage
-	queueClient *queue.Client
+	fileStorage domain.FileStorage
+	taskQueue   domain.TaskQueue
 	logger      *logger.Logger
 }
 
@@ -34,8 +32,8 @@ func New(
 	chunkRepo domain.ChunkRepository,
 	embedder domain.EmbedderClient,
 	chunker domain.ChunkerService,
-	minio *minio.MinIOStorage,
-	queueClient *queue.Client,
+	fileStorage domain.FileStorage,
+	taskQueue domain.TaskQueue,
 	logger *logger.Logger,
 ) domain.DocumentService {
 	return &service{
@@ -43,8 +41,8 @@ func New(
 		chunkRepo:   chunkRepo,
 		embedder:    embedder,
 		chunker:     chunker,
-		minio:       minio,
-		queueClient: queueClient,
+		fileStorage: fileStorage,
+		taskQueue:   taskQueue,
 		logger:      logger,
 	}
 }
@@ -56,7 +54,7 @@ func (s *service) enqueueProcessDocument(
 	if err != nil {
 		return err
 	}
-	_, err = s.queueClient.Enqueue(task)
+	_, err = s.taskQueue.EnqueueAny(task)
 	return err
 }
 
@@ -98,7 +96,7 @@ func (s *service) Upload(
 		return "", fmt.Errorf("read file: %w", err)
 	}
 	reader := bytes.NewReader(fileBytes)
-	err = s.minio.Upload(
+	err = s.fileStorage.Upload(
 		ctx,
 		objectKey,
 		reader,
@@ -124,7 +122,7 @@ func (s *service) Upload(
 	id, err := s.docRepo.Create(ctx, doc)
 	if err != nil {
 		s.logger.Error("failed to save document metadata", "error", err)
-		_ = s.minio.Delete(ctx, objectKey) // remove file, if not save in DB
+		_ = s.fileStorage.Delete(ctx, objectKey) // remove file, if not save in DB
 		return "", fmt.Errorf("save metadata: %w", err)
 	}
 
@@ -151,7 +149,7 @@ func (s *service) ProcessDocument(
 			"doc_id", docID, "object_key", objectKey,
 		)
 
-		reader, err := s.minio.Download(ctx, objectKey)
+		reader, err := s.fileStorage.Download(ctx, objectKey)
 		if err != nil {
 			return fmt.Errorf("download from minio: %w", err)
 		}
@@ -330,7 +328,7 @@ func (s *service) GetDocumentDownloadURL(
 	}
 
 	expiresIn := 15 * time.Minute // TODO: move timeout to config
-	presignedURL, err := s.minio.GetPresignedURL(
+	presignedURL, err := s.fileStorage.GetPresignedURL(
 		ctx, doc.FilePath, expiresIn,
 	)
 	if err != nil {

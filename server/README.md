@@ -185,10 +185,23 @@ go vet ./...
 
 ### Тесты
 ```bash
-go test ./... -v
+go test ./... -v            # все тесты
+go test ./... -cover        # с отчётом о покрытии
 ```
 
-Для интеграционных тестов требуется запущенный PostgreSQL (можно использовать `testcontainers-go`).
+#### Test Patterns
+- **Domain model tests** (`internal/domain/`): Table-driven tests for validation and business rules
+- **Service tests** (`internal/service/`): Same-package tests using manual mocks from `test/mocks/`
+- **Handler tests** (`internal/transport/http/handlers/`): `httptest.NewRecorder` + `httptest.NewRequest` with mocked service interfaces
+- **Middleware tests** (`internal/transport/http/middleware/`): Wrapped handler chains with `httptest`
+- **JWT tests** (`pkg/jwt/`): Token generation, validation, expiration, and error cases
+
+#### Test Infrastructure
+- `test/mocks/` — Manual mock implementations for all domain interfaces (document repo, chunk repo, embedder, reranker, reader clients)
+- `test/helpers/` — Common test utilities: `TestUser`, `TestDocument`, `TestChunk`, `ContextWithTimeout`, and assertion helpers (`AssertNoError`, `AssertError`, `AssertEqual`)
+- `test/fixtures/` — Sample test data
+
+**Note:** Tests use manual mocks and `httptest` — no external dependencies required. No integration tests for PostgreSQL, Redis, or MinIO in this phase.
 
 ---
 

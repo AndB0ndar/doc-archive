@@ -161,6 +161,7 @@ func (h *UploadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	logger.Debug("Upload: document created successfully")
 
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
 	logger.Debug("Upload: encoding response")
 	if err := json.NewEncoder(w).Encode(models.UploadResponse{
 		DocumentID: docID,

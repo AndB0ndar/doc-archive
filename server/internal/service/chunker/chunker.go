@@ -1,6 +1,7 @@
 package chunker
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/AndB0ndar/doc-archive/internal/domain"
@@ -31,6 +32,15 @@ func New(
 }
 
 func (c *chunker) Split(text string) ([]string, error) {
+	if c.ChunkSize <= 0 {
+		return nil, fmt.Errorf("chunk size must be positive, got %d", c.ChunkSize)
+	}
+	if c.Overlap < 0 {
+		return nil, fmt.Errorf("overlap must be non-negative, got %d", c.Overlap)
+	}
+	if c.Overlap >= c.ChunkSize {
+		return nil, fmt.Errorf("overlap (%d) must be less than chunk size (%d)", c.Overlap, c.ChunkSize)
+	}
 	if c.SplitBySentences {
 		return c.mergeWithOverlap(c.recursiveSplit(text, c.Separators)), nil
 	}
