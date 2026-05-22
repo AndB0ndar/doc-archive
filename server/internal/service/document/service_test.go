@@ -21,6 +21,7 @@ type mockFileStorage struct {
 	downloadErr error
 	deleteErr   error
 	urlErr      error
+	deletedKeys []string
 }
 
 func (m *mockFileStorage) Upload(ctx context.Context, objectKey string, reader io.Reader, size int64, contentType string) error {
@@ -35,6 +36,7 @@ func (m *mockFileStorage) Download(ctx context.Context, objectKey string) (io.Re
 }
 
 func (m *mockFileStorage) Delete(ctx context.Context, objectKey string) error {
+	m.deletedKeys = append(m.deletedKeys, objectKey)
 	return m.deleteErr
 }
 
@@ -333,13 +335,14 @@ func TestDocumentService_DeleteDocument_Authorization(t *testing.T) {
 	t.Run("owner can delete their document", func(t *testing.T) {
 		ctx := helpers.ContextWithTimeout(t)
 		svc, docRepo, _ := setupTestService(t)
+		fileStorage := svc.fileStorage.(*mockFileStorage)
 
 		// Create a document
 		doc := &domain.Document{
 			ID:        "test-doc-id",
 			UserID:    "user1",
 			Title:     "Test Document",
-			FilePath:  "/test/path/document.pdf",
+			FilePath:  "documents/test-doc-id.pdf",
 			FileSize:  1024,
 			Status:    domain.DocumentStatusPending,
 			CreatedAt: time.Now(),
@@ -351,6 +354,8 @@ func TestDocumentService_DeleteDocument_Authorization(t *testing.T) {
 		err = svc.DeleteDocument(ctx, "test-doc-id", "user1")
 
 		helpers.AssertNoError(t, err)
+		helpers.AssertEqual(t, len(fileStorage.deletedKeys), 1)
+		helpers.AssertEqual(t, fileStorage.deletedKeys[0], "documents/test-doc-id.pdf")
 
 		// Verify document is deleted
 		_, err = svc.GetDocumentByID(ctx, "test-doc-id", "user1")
@@ -366,7 +371,7 @@ func TestDocumentService_DeleteDocument_Authorization(t *testing.T) {
 			ID:        "test-doc-id",
 			UserID:    "user1",
 			Title:     "Test Document",
-			FilePath:  "/test/path/document.pdf",
+			FilePath:  "documents/test-doc-id.pdf",
 			FileSize:  1024,
 			Status:    domain.DocumentStatusPending,
 			CreatedAt: time.Now(),
@@ -380,6 +385,31 @@ func TestDocumentService_DeleteDocument_Authorization(t *testing.T) {
 		helpers.AssertError(t, err)
 
 		// Verify document still exists
+		retrievedDoc, err := svc.GetDocumentByID(ctx, "test-doc-id", "user1")
+		helpers.AssertNoError(t, err)
+		helpers.AssertEqual(t, retrievedDoc.ID, "test-doc-id")
+	})
+
+	t.Run("storage delete failure returns error and keeps document", func(t *testing.T) {
+		ctx := helpers.ContextWithTimeout(t)
+		svc, docRepo, _ := setupTestService(t)
+		svc.fileStorage = &mockFileStorage{deleteErr: errors.New("storage delete failed")}
+
+		doc := &domain.Document{
+			ID:        "test-doc-id",
+			UserID:    "user1",
+			Title:     "Test Document",
+			FilePath:  "documents/test-doc-id.pdf",
+			FileSize:  1024,
+			Status:    domain.DocumentStatusPending,
+			CreatedAt: time.Now(),
+		}
+		_, err := docRepo.Create(ctx, doc)
+		helpers.AssertNoError(t, err)
+
+		err = svc.DeleteDocument(ctx, "test-doc-id", "user1")
+		helpers.AssertError(t, err)
+
 		retrievedDoc, err := svc.GetDocumentByID(ctx, "test-doc-id", "user1")
 		helpers.AssertNoError(t, err)
 		helpers.AssertEqual(t, retrievedDoc.ID, "test-doc-id")

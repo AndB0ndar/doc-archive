@@ -304,11 +304,11 @@ func (s *service) DeleteDocument(
 		return fmt.Errorf("document not found or not owned: %w", err)
 	}
 
-	if err := os.Remove(doc.FilePath); err != nil && !os.IsNotExist(err) {
+	if err := s.fileStorage.Delete(ctx, doc.FilePath); err != nil {
 		s.logger.Error(
-			"failed to delete file", "path", doc.FilePath, "error", err,
+			"failed to delete file from storage", "path", doc.FilePath, "error", err,
 		)
-		return fmt.Errorf("delete file: %w", err)
+		return fmt.Errorf("delete file from storage: %w", err)
 	}
 
 	if err := s.docRepo.Delete(ctx, id, userID); err != nil {
